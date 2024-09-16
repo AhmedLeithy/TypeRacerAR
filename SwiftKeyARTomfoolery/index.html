@@ -15,10 +15,15 @@
 			</div>
 		</div>
 
-		<a-scene xr-mode-ui="enabled: false;" shadow="type: pcfsoft">
+		<a-scene xr-mode-ui="enabled: false;" shadow="type: pcfsoft" fog="type: exponential; color: white; density: 0.1; near: 0.1">
 			<a-assets>
+					<img id="concrete_normal" src="static/img/concrete_normal.jpg">
 					<img id="concrete" src="static/img/concrete.jpg">
-					<img id="sky" src="static/img/sky.jpg">
+					<img id="ground" src="static/img/Gravel_001_BaseColor.jpg">
+					<img id="ground_normal" src="static/img/Gravel_001_Normal.jpg">
+					<img id="ground_height" src="static/img/Gravel_001_Height.png">
+					<img id="ground_ambient" src="static/img/Gravel_001_AmbientOcclusion.jpg">
+					<img id="sky" src="static/img/sky_big_as_hell.jpg">
 					<a-asset-item id="ferrari_roma" src="static/models/ferrari_roma/scene.gltf"></a-asset-item>
 					<a-asset-item id="chevrolet_camaro" src="static/models/chevrolet_camaro/scene.gltf"></a-asset-item>
 					<a-asset-item id="audi_rs7" src="static/models/audi_rs7/scene.gltf"></a-asset-item>
@@ -27,22 +32,20 @@
 					<a-asset-item id="ferrari_br20" src="static/models/ferrari_br20/scene.gltf"></a-asset-item>
 			</a-assets>
 
-			<a-sky src="#sky"></a-sky>
-			<a-entity light="type:ambient; color: white; intensity: 0.5"></a-entity>
+			<a-sky src="#sky" material="fog: false; color: white; opacity: 0.4"></a-sky>
+			<a-entity light="type:ambient; color: white; intensity: 0.4"></a-entity>
 			<a-entity light="type:directional; castShadow:true; color: white; intensity: 1" position="1 1 -1"></a-entity>
-			<a-entity light="type:directional; castShadow:true; color: white; intensity: 1" position="1 1 1"></a-entity>
+			<a-entity light="type:directional; castShadow:true; color: wheat; intensity: 0.2" position="1 1 1"></a-entity>
 
-			<a-camera position="0 1.6 0" look-controls>
+			<a-camera position="0 1.4 0.5" look-controls>
 				<a-entity cursor="fuse: true; fuseTimeout: 400" position="0 0 -1" geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03" material="color: green; shader: flat" rotation="0 0 0" scale="1 1 1" raycaster>
-					<a-animation begin="click" easing="ease-in" attribute="scale" fill="backwards" from="0.1 0.1 0.1" to="1 1 1"></a-animation>
-					<a-animation begin="cursor-fusing" easing="ease-in" attribute="scale" fill="forwards" from="1 1 1" to="0.1 0.1 0.1"></a-animation>
 				</a-entity>
 			</a-camera>
 
 			<a-entity car-select>
 				<a-entity id="highlight" visible="false">
 					<a-cone color="green" height="0.07" radius-bottom="0.04" radius-top="0" position="0 0.7 0" rotation="180 0 0" shadow="cast: false; receive: false" animation="property: position; to: 0 1.2 0; dir: alternate; dur: 1000; loop: true; easing: easeInOutSine"></a-cone>
-					<a-circle color="green" shadow="cast: false" radius="1" rotation="-90 0 0" material="opacity: 0.3; transparent: true; metalness: 0.0;"></a-circle>
+					<a-circle color="green" shadow="cast: false" radius="1" rotation="-90 0 0" material="opacity: 0.3; transparent: true; metalness: 0.0;" position="0 0.001 0"></a-circle>
 				</a-entity>
 
 				<a-text value="Select a car" align="center" color="darkblue" position="0 2 -3" scale="0.5 0.5 0.5" geometry="primitive:plane; width: 4" material="transparent: true; opacity: 0; fog: false;" id="text_select" anchor="center">
@@ -60,7 +63,12 @@
 			</a-entity>
 
 			<!--  road texture -->
-			<a-entity geometry="primitive: plane; width: 100; height: 100; side: double;" shadow material="src:#concrete; color: #4c4c4c; roughness: 1.0; metalness: 0.0; reflectivity: 0.0; repeat: 50 100;" rotation="-90 0 0" position="0 -0.01 0"></a-entity>
+			<a-entity geometry="primitive: plane; width: 100; height: 100; side: double;"
+					  shadow
+					  rotation="-90 0 0"
+					  position="0 0 0" 
+					  material="src: #ground; normalMap: #ground_normal; displacementMap: #ground_height; ambientOcclusionMap: #ground_ambient; repeat: 200 200; ambientOcclusionTextureRepeat: 200 200; displacementTextureRepeat: 200 200; normalTextureRepeat: 200 200; metalness: 0.1; roughness: 0.9; displacementBias: 0; displacementScale: 0.001; color: #6e6e6e">
+			</a-entity>
 		</a-scene>
 
 	</body>
