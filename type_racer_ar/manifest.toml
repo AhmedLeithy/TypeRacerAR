@@ -23,6 +23,7 @@ packages = [
 ]
 
 [requirements]
+birl = { version = ">= 1.7.1 and < 2.0.0" }
 decode = { version = ">= 0.2.1 and < 1.0.0" }
 gleam_json = { version = ">= 2.0.0 and < 3.0.0" }
 gleam_otp = { version = ">= 0.12.0 and < 1.0.0" }
