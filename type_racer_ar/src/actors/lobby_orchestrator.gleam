@@ -68,18 +68,17 @@ fn add_waiting_user(
   // check if user already in list
   let player_already_waiting =
     state.waiting_players
-    |> list.count(fn(p) { p.player_uuid == player_uuid })
+    |> list.any(fn(p) { p.player_uuid == player_uuid })
 
   case player_already_waiting {
-    0 -> {
+    False -> {
       let player = player.Player(player_name, player_uuid, car_id, conn)
-
-      // add user to waiting list
       let new_waiting_user_list = [player, ..state.waiting_players]
       let new_state =
         LobbyOrchestratorState(..state, waiting_players: new_waiting_user_list)
+      // set waiting time
     }
-    _ -> {
+    True -> {
       io.debug("player already waiting")
       state
     }
