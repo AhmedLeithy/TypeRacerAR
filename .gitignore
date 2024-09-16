@@ -1,0 +1,4 @@
+type_racer_ar/*.beam
+type_racer_ar/*.ez
+type_racer_ar/build
+type_racer_ar/erl_crash.dump
