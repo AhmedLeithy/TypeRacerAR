@@ -1,0 +1,30 @@
+#overlay div {
+	background: rgba(0, 0, 0, 0.3);
+	color: white;
+	padding: 5px;
+	font-weight: bold;
+	z-index: 10000 !important;
+}
+#overlay div * {
+	margin: 0;
+}
+#overlay-btn {
+	display: none;
+}
+#input {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	width: 100vw;
+	height: 100vh;
+	color: white;
+	display: none;
+	justify-content: center;
+	align-items: center;
+	background: transparent;
+}
+#input:focus {
+	outline: none;
+	background: rgba(0, 0, 0, 0.1);
+}
+

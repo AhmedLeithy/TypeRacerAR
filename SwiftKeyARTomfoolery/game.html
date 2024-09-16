@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<title>AR Tomfoolery</title>
+		<script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+		<script src="tomfoolery.js"></script>
+		<link rel="stylesheet" href="overlaystyle.css">
+	</head>
+		<div id="overlay">
+			<div>
+				<p id="overlay-msg">Hello!</p>
+				<button id="overlay-btn" type="button"></button>
+				<input id="input" type="text" placeholder="Enter the word you see">
+			</div>
+		</div>
+		<a-scene
+				webxr="requiredFeatures:hit-test,local-floor;overlayElement:#overlay"
+				background="color:white;"
+				reflection="directionalLight:#dirLight;"
+				shadow="type: pcfsoft"
+				renderer="logarithmicDepthBuffer: true;"
+				xr-mode-ui="XRMode: ar">
+				<a-assets>
+					<a-asset-item id="trophy" src="static/models/trophy/scene.gltf"></a-asset-item>
+					<a-asset-item id="reticle" src="reticle.gltf" responseType="arraybuffer"></a-asset-item>
+					<a-asset-item id="ferrari_roma" src="static/models/ferrari_roma/scene.gltf"></a-asset-item>
+					<a-asset-item id="chevrolet_camaro" src="static/models/chevrolet_camaro/scene.gltf"></a-asset-item>
+					<a-asset-item id="audi_rs7" src="static/models/audi_rs7/scene.gltf"></a-asset-item>
+					<a-asset-item id="lada_vesta" src="static/models/lada_vesta/scene.gltf"></a-asset-item>
+				</a-assets>
+
+				<a-light type="hemisphere" color="cyan" intensity="1"></a-light>
+				<a-light id="dirlight" intensity="0.1" type="directional" light="castShadow:true;" position="-1 1 1"></a-light>
+
+				<a-text id="word" value="Hello" align="center" color="blue" position="0 5 0"></a-text>
+
+				<a-entity id="target" scale="0.15 0.15 0.15" position="0 -2 -0.5" visible="false">
+					<a-gltf-model id="finish" src="#trophy" shadow position="0 0 20" scale="5 5 5" 
+					animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear"
+						></a-gltf-model>
+					<a-entity class="player" id="player">
+						<a-gltf-model src="#ferrari_roma" shadow="cast: true; receive: true" scale="0.3 0.3 0.3">
+						</a-gltf-model>
+						<a-cone color="green" height="0.1" radius-bottom="0.05" radius-top="0" position="0 1 0" rotation="180 0 0" shadow
+						 animation="property: position; to: 0 1.6 0; dir: alternate; dur: 1000; loop: true; easing: easeInOutSine"
+							>
+							<a-light type="point" color="green" intensity="2" shadow="cast: true; receive: false"></a-light>
+						</a-cone>
+					</a-entity>
+					<a-entity class="player">
+						<a-gltf-model src="#chevrolet_camaro" shadow="cast: true; receive: true" scale="0.3 0.3 0.3">
+						</a-gltf-model>
+					</a-entity>
+					<a-entity class="player">
+						<a-gltf-model src="#audi_rs7" shadow="cast: true; receive: true" scale="0.3 0.3 0.3">
+						</a-gltf-model>
+					</a-entity>
+					<a-entity class="player">
+						<a-gltf-model src="#lada_vesta" shadow="cast: true; receive: true" scale="0.3 0.3 0.3">
+						</a-gltf-model>
+					</a-entity>
+					<a-plane height="1000" width="1000" rotation="-90 0 0"
+														position="0 0 0"
+				 shadow="receive: true"
+				 ar-shadows
+				 visible="false"></a-plane>
+				</a-entity>
+
+				<a-entity gltf-model="#reticle" scale="0.5 0.5 0.5" position="0 0 -20" hit-test></a-entity>
+		</a-scene>
+	</body>
+</html>

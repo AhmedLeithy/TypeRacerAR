@@ -1,0 +1,134 @@
+AFRAME.registerComponent('hit-test', {
+	init: function() {
+		var messageEl = document.querySelector('#overlay-msg');
+
+		this.xrHitTestSource = null;
+		this.viewerSpace = null;
+		this.refSpace = null;
+
+		this.el.sceneEl.renderer.xr.addEventListener('sessionend', () => {
+			this.viewerSpace = null;
+			this.refSpace = null;
+			this.xrHitTestSource = null;
+		});
+		this.el.sceneEl.renderer.xr.addEventListener('sessionstart', () => {
+			messageEl.innerHTML = "Wait for a blue circle to appear and tap on the ground to set the car position. If it doesn't appear, try moving the camera around the room.";
+
+			let session = this.el.sceneEl.renderer.xr.getSession();
+			let element = this.el;
+			let target = document.getElementById('target');
+			let camera = document.querySelector('[camera]');
+			target.setAttribute('visible', false);
+
+			session.addEventListener('select', function onsessionselect() {
+				let target_pos = element.getAttribute('position');
+				let camera_pos = camera.getAttribute('position');
+
+				if (camera_pos.distanceTo(target_pos) > 2) {
+					messageEl.innerHTML = "Too far away. Try moving closer.";
+					return;
+				}
+
+				let current_camera_rotation = camera.getAttribute('rotation');
+
+				target.setAttribute('position', target_pos);
+				target.setAttribute('visible', true);
+				target.setAttribute('rotation', { x: 0, y: current_camera_rotation.y - 180, z: 0 });
+
+				// make it face away
+				// target.setAttribute('rotation', '0 180 0');
+
+				// get the child elements of the target that are gltf-models
+				let models = target.querySelectorAll('a-gltf-model');
+
+				// set the position of the models to the position of the target
+				models.forEach((model, i) => {
+					model.object3D.position.x += i * 0.8;
+
+					if (model.getAttribute('id') !== 'player') {
+						// make the model semi transparent
+						let mesh = model.getObject3D('mesh');
+						mesh.traverse((node) => {
+							if (node.isMesh) {
+								node.material.transparent = true;
+								node.material.opacity = 0.2;
+								node.material.needsUpdate = true;
+							}
+						});
+					}
+				});
+
+				element.setAttribute('visible', false);
+
+				// messageEl.innerHTML = "Car position set";
+
+				// disable the hit-test component after the first hit
+				setTimeout(() => {
+					session.removeEventListener('select', onsessionselect);
+				}, 200);
+			});
+
+			session.requestReferenceSpace('viewer').then((space) => {
+				this.viewerSpace = space;
+				session.requestHitTestSource({ space: this.viewerSpace })
+					.then((hitTestSource) => {
+						this.xrHitTestSource = hitTestSource;
+					});
+			});
+
+			session.requestReferenceSpace('local-floor').then((space) => {
+				this.refSpace = space;
+			});
+		});
+	},
+	tick: function() {
+		if (this.el.sceneEl.is('ar-mode')) {
+			if (!this.viewerSpace) return;
+
+			let frame = this.el.sceneEl.frame;
+			let xrViewerPose = frame.getViewerPose(this.refSpace);
+
+			if (this.xrHitTestSource && xrViewerPose) {
+				let hitTestResults = frame.getHitTestResults(this.xrHitTestSource);
+				if (hitTestResults.length > 0) {
+					let pose = hitTestResults[0].getPose(this.refSpace);
+
+					let inputMat = new THREE.Matrix4();
+					inputMat.fromArray(pose.transform.matrix);
+
+					let position = new THREE.Vector3();
+					position.setFromMatrixPosition(inputMat);
+					this.el.setAttribute('position', position);
+				}
+			}
+		}
+	}
+});
+
+AFRAME.registerComponent('ar-shadows', {
+	// Swap an object's material to a transparent shadows-only material while
+	// in AR mode. Intended for use with a ground plane. The object is also
+	// set visible while in AR mode, this is useful if it's hidden in other
+	// modes due to them using a 3D environment.
+	schema: {
+		opacity: { default: 0.3 }
+	},
+	init: function() {
+		this.el.sceneEl.addEventListener('enter-vr', () => {
+			this.wasVisible = this.el.getAttribute('visible');
+			if (this.el.sceneEl.is('ar-mode')) {
+				this.savedMaterial = this.el.object3D.children[0].material;
+				this.el.object3D.children[0].material = new THREE.ShadowMaterial();
+				this.el.object3D.children[0].material.opacity = this.data.opacity;
+				this.el.setAttribute('visible', true);
+			}
+		});
+		this.el.sceneEl.addEventListener('exit-vr', () => {
+			if (this.savedMaterial) {
+				this.el.object3D.children[0].material = this.savedMaterial;
+				this.savedMaterial = null;
+			}
+			if (!this.wasVisible) this.el.setAttribute('visible', false);
+		});
+	}
+});

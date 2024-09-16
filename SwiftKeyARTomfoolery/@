@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<title>AR Tomfoolery</title>
+		<script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+		<script src="tomfoolery.js"></script>
+		<link rel="stylesheet" href="overlaystyle.css">
+	</head>
+	<body>
+		<div id="overlay">
+			<div>
+				<p id="overlay-msg">Look at a car to select it</p>
+				<button id="overlay-btn" type="button"></button>
+			</div>
+		</div>
+
+		<a-scene xr-mode-ui="enabled: false;" shadow="type: pcfsoft" fog="near: 0.5; far: 50; color: black;">
+			<a-assets>
+					<img id="concrete" src="static/img/concrete.jpg">
+					<a-asset-item id="ferrari_roma" src="static/models/ferrari_roma/scene.gltf"></a-asset-item>
+					<a-asset-item id="chevrolet_camaro" src="static/models/chevrolet_camaro/scene.gltf"></a-asset-item>
+					<a-asset-item id="audi_rs7" src="static/models/audi_rs7/scene.gltf"></a-asset-item>
+					<a-asset-item id="tesla_cybertruck" src="static/models/tesla_cybertruck/scene.gltf"></a-asset-item>
+					<a-asset-item id="mazda_rx7" src="static/models/mazda_rx7/scene.gltf"></a-asset-item>
+					<a-asset-item id="ferrari_br20" src="static/models/ferrari_br20/scene.gltf"></a-asset-item>
+			</a-assets>
+
+			<a-sky color="#000"></a-sky>
+			<a-entity light="type:ambient; color: white; intensity: 0.5"></a-entity>
+			<a-entity light="type:directional; castShadow:true; color: white; intensity: 1" position="1 1 -1"></a-entity>
+			<a-entity light="type:directional; castShadow:true; color: white; intensity: 1" position="1 1 1"></a-entity>
+
+			<a-camera position="0 1.6 0" look-controls>
+				<a-entity cursor="fuse: true; fuseTimeout: 400" position="0 0 -1" geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03" material="color: green; shader: flat" rotation="0 0 0" scale="1 1 1" raycaster>
+					<a-animation begin="click" easing="ease-in" attribute="scale" fill="backwards" from="0.1 0.1 0.1" to="1 1 1"></a-animation>
+					<a-animation begin="cursor-fusing" easing="ease-in" attribute="scale" fill="forwards" from="1 1 1" to="0.1 0.1 0.1"></a-animation>
+				</a-entity>
+			</a-camera>
+
+			<a-entity car-select>
+				<a-entity id="highlight" visible="false">
+					<a-cone color="green" height="0.07" radius-bottom="0.04" radius-top="0" position="0 0.7 0" rotation="180 0 0" shadow="cast: false; receive: false" animation="property: position; to: 0 1.2 0; dir: alternate; dur: 1000; loop: true; easing: easeInOutSine"></a-cone>
+					<a-circle color="green" shadow="cast: false" radius="1" rotation="-90 0 0" material="opacity: 0.2; transparent: true; metalness: 0.0;"></a-circle>
+				</a-entity>
+
+				<a-text value="Select a car" align="center" color="darkblue" position="0 2 -3" scale="0.5 0.5 0.5" geometry="primitive:plane; width: 4" material="transparent: true; opacity: 0; fog: false;" id="text_select" anchor="center">
+				<a-triangle color="darkgreen" position="1.5 0 0" rotation="0 0 -90" scale="0.2 0.2 0.2" visible="false"></a-triangle>
+			</a-text>
+			<a-text value="No car selected" color="darkblue" align="center" position="0 1.8 -3" scale="0.4 0.4 0.4" id="car_name"></a-text>
+
+			<a-gltf-model src="#ferrari_roma" scale="0.3 0.3 0.3" position="-2 0 -5" shadow="receive:false" animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear">
+			</a-gltf-model>
+			<a-gltf-model src="#chevrolet_camaro" scale="0.3 0.3 0.3" position="0 0 -5" shadow="receive: false;" animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear"></a-gltf-model>
+			<a-gltf-model src="#audi_rs7" scale="0.3 0.3 0.3" position="2 0 -5" shadow="receive:false;" animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear"></a-gltf-model>
+			<a-gltf-model src="#ferrari_br20" scale="0.3 0.3 0.3" position="-2 0 -2" shadow="receive:false;" animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear"></a-gltf-model>
+			<a-gltf-model src="#tesla_cybertruck" scale="0.3 0.3 0.3" position="0 0 -2" shadow="receive:false;" animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear"></a-gltf-model>
+			<a-gltf-model src="#mazda_rx7" scale="0.3 0.3 0.3" position="2 0 -2" shadow="receive:false;" animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear"></a-gltf-model>
+			</a-entity>
+
+			<!--  road texture -->
+			<a-entity geometry="primitive: plane; width: 100; height: 100; side: double;" shadow material="src:#concrete; color: #4c4c4c; roughness: 1.0; metalness: 0.0; reflectivity: 0.0; repeat: 100 50;" rotation="-90 0 0" position="0 -0.01 0"></a-entity>
+		</a-scene>
+
+	</body>
+</html>
