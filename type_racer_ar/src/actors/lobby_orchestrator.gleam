@@ -1,12 +1,11 @@
 import actors/lobby.{type Lobby, type LobbyMsg, type LobbyState}
+import birl
 import gleam/dict
 import gleam/erlang/process.{type Subject}
-import gleam/int
 import gleam/io
+import gleam/list
 import gleam/otp/actor
 import mist.{type WebsocketConnection}
-import prng/random.{type Generator}
-import prng/seed
 import records/player.{type Player}
 
 // Define a message type
@@ -28,8 +27,7 @@ pub type LobbyOrchestratorState {
     waiting_players: List(Player),
     active_lobbies: List(Lobby),
     player_to_lobby: dict.Dict(String, Lobby),
-    // player_uuid : Lobby reference
-    id_gen: Generator(Int),
+    time_waiting: birl.Time,
   )
 }
 
@@ -40,40 +38,10 @@ pub fn lobby_orchestrator_handle_message(
 ) -> actor.Next(LobbyOrchestratorMsg, LobbyOrchestratorState) {
   case lobby_orchestrator_msg {
     LOJoinLobbyRequest(player_name, player_uuid, car_id, connection) -> {
-      case player_uuid {
-        "" -> {
-          // create user id
-          let #(random_int, updated_seed) =
-            state.id_gen |> random.step(seed.random())
-          let random_id = int.to_string(random_int)
-          let player_uuid = player_name <> "_" <> random_id
-
-          let new_state =
-            add_waiting_user(
-              player_uuid,
-              player_name,
-              car_id,
-              connection,
-              state,
-            )
-
-          // RETURN PLAYER ID 
-          // process.send(client, player_uuid)
-          actor.continue(new_state)
-        }
-        _ -> {
-          let new_state =
-            add_waiting_user(
-              player_uuid,
-              player_name,
-              car_id,
-              connection,
-              state,
-            )
-          // Continue with new state
-          actor.continue(new_state)
-        }
-      }
+      let new_state =
+        add_waiting_user(player_uuid, player_name, car_id, connection, state)
+      io.debug(new_state)
+      actor.continue(new_state)
     }
     LOMovePlayer(player_uuid, new_progress) -> {
       // TODO
@@ -98,14 +66,36 @@ fn add_waiting_user(
   state: LobbyOrchestratorState,
 ) -> LobbyOrchestratorState {
   // check if user already in list
-  // NOT HANDLED IF USER ALREADY IN GAME
+  let player_already_waiting =
+    state.waiting_players
+    |> list.count(fn(p) { p.player_uuid == player_uuid })
 
-  // create player obj
-  let player = player.Player(player_name, player_uuid, car_id, conn)
+  case player_already_waiting {
+    0 -> {
+      let player = player.Player(player_name, player_uuid, car_id, conn)
 
-  // add user to waiting list
-  let new_waiting_user_list = [player, ..state.waiting_players]
-  let new_state =
-    LobbyOrchestratorState(..state, waiting_players: new_waiting_user_list)
+      // add user to waiting list
+      let new_waiting_user_list = [player, ..state.waiting_players]
+      let new_state =
+        LobbyOrchestratorState(..state, waiting_players: new_waiting_user_list)
+    }
+    _ -> {
+      io.debug("player already waiting")
+      state
+    }
+  }
   // CALL CHECK IF WE CAN START LOBBY
+  // should_start_lobby(state)
+}
+
+fn should_start_lobby(state) -> LobbyOrchestratorState {
+  state
+  // if player count -> start lobby
+  // if time passed -> start lobby
+
+  // 
+}
+
+fn start_lobby(state) -> LobbyOrchestratorState {
+  todo
 }

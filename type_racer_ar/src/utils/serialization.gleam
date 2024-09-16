@@ -1,9 +1,9 @@
 import actors/lobby.{type LobbyMsg, LGetResult, LMovePlayer}
 import decode
 import gleam/dict
-import gleam/dynamic.{type DecodeError, type Dynamic, field, int, string}
+import gleam/dynamic.{type Dynamic, field, float, int, string}
 import gleam/io
-import gleam/json
+import gleam/json.{type DecodeError, UnexpectedSequence}
 
 pub type ClientMessage {
   ClientMessage(type_: String, obj: String)
@@ -11,70 +11,54 @@ pub type ClientMessage {
 
 pub type ClientMessageCommand {
   JoinLobbyRequest(player_name: String, player_uuid: String, car_id: Int)
-  MovePlayer(player_uuid: String, progress: Float)
+  MovePlayer(progress: Float)
 }
 
 pub fn decode_message(
   json_string: String,
-) -> Result(ClientMessageCommand, List(DecodeError)) {
-  io.debug(json_string)
+) -> Result(ClientMessageCommand, DecodeError) {
+  let message_decoder =
+    dynamic.decode2(
+      ClientMessage,
+      field("type", of: string),
+      field("obj", of: string),
+    )
 
-  let decoded_result =
-    json.decode(json_string, dynamic.dict(dynamic.string, dynamic.string))
-  case decoded_result {
-    Ok(dynamic_value) -> {
-      let moveplayer_decoder =
-        decode.into({
-          use x <- decode.parameter
-          use y <- decode.parameter
-          MovePlayer(x, y)
-        })
-        |> decode.field("player_id", decode.string)
-        |> decode.field("player_pos", decode.float)
+  let join_lobby_decoder =
+    dynamic.decode3(
+      JoinLobbyRequest,
+      field("player_name", of: string),
+      field("player_uuid", of: string),
+      field("car_id", of: int),
+    )
 
-      let updatescore_decoder =
-        decode.into({
-          use score <- decode.parameter
-          // UpdateScore(score)
-          MovePlayer("b", 1.0)
-        })
-        |> decode.field("score", decode.string)
+  let move_player_decoder =
+    dynamic.decode1(MovePlayer, field("progress", of: float))
 
-      let decoder =
-        decode.at(["type"], decode.string)
-        |> decode.then(fn(tag) {
-          case tag {
-            "move" -> moveplayer_decoder
-            "score" -> updatescore_decoder
-            _ -> decode.fail("Unknown type")
-          }
-        })
-      io.debug(dynamic_value)
-      let dynamic = dynamic.from(dynamic_value)
-      decoder
-      |> decode.from(dynamic)
+  let client_message = json.decode(from: json_string, using: message_decoder)
+  io.debug(client_message)
+
+  case client_message {
+    Ok(deserialized_client_message) -> {
+      case deserialized_client_message.type_ {
+        "join" ->
+          json.decode(
+            deserialized_client_message.obj,
+            using: join_lobby_decoder,
+          )
+        "progress" ->
+          json.decode(
+            deserialized_client_message.obj,
+            using: move_player_decoder,
+          )
+        _ -> Error(UnexpectedSequence("unexpected sequence"))
+      }
     }
-    Error(decode_error) -> {
-      io.debug(decode_error)
-      Error([])
+    Error(error) -> {
+      io.debug("invalid input")
+      Error(error)
     }
   }
-  // case json.decode(json_string, json.object) {
-  //   Ok(json.Object(fields)) ->
-  //     case field("action", fields) {
-  //       Ok(json.String("move")) -> {
-  //         let x = field("x", fields) |> json.as_int |> unwrap_or(0)
-  //         let y = field("y", fields) |> json.as_int |> unwrap_or(0)
-  //         Ok(MovePlayer(x, y))
-  //       }
-  //       Ok(json.String("score")) -> {
-  //         let score = field("score", fields) |> json.as_int |> unwrap_or(0)
-  //         Ok(UpdateScore(score))
-  //       }
-  //       _ -> Error("Unknown action")
-  //     }
-  //   _ -> Error("Invalid JSON")
-  // }
 }
 
 pub fn dict_to_string(dict: dict.Dict(String, String)) -> String {

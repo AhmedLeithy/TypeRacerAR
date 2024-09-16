@@ -1,6 +1,7 @@
 import actors/lobby_orchestrator.{
   LobbyOrchestratorState, lobby_orchestrator_handle_message,
 }
+import birl
 import gleam/bit_array
 import gleam/bytes_builder
 import gleam/dict
@@ -29,16 +30,18 @@ pub fn main() {
     response.new(404)
     |> response.set_body(mist.Bytes(bytes_builder.new()))
 
+  let assert Ok(future_time) = birl.now_with_offset("12:00")
+
   let assert Ok(my_lobby_orchestrator_actor) =
     actor.start(
-      LobbyOrchestratorState([], [], dict.new(), gen),
+      LobbyOrchestratorState([], [], dict.new(), future_time),
       lobby_orchestrator_handle_message,
     )
 
   // let assert Ok(my_lobby_orchestrator_actor) =
   //   actor.start(LobbyState(dict.new()), lobby_orchestrator_handle_message)
 
-  let init_state = SocketState(my_lobby_orchestrator_actor, "", "")
+  let init_state = SocketState(my_lobby_orchestrator_actor, "", "", gen)
   let assert Ok(_) =
     fn(req: Request(Connection)) -> Response(ResponseData) {
       case request.path_segments(req) {
