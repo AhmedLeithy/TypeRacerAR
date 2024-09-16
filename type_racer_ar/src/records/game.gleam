@@ -5,7 +5,3 @@ pub type GameStatus {
   Running
   Finished
 }
-
-pub type GameState {
-  GameState
-}

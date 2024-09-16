@@ -2,7 +2,7 @@ import gleam/dict
 import gleam/erlang/process.{type Subject}
 import gleam/io
 import gleam/otp/actor
-import records/game.{type GameState}
+import records/game.{type GameStatus}
 
 pub type Lobby {
   Lobby(lobby_id: String, actor: process.Subject(LobbyMsg))
@@ -11,13 +11,13 @@ pub type Lobby {
 
 // Define a message type
 pub type LobbyMsg {
-  LMovePlayer(String, String)
+  LMovePlayer(String, Float)
   LGetResult(reply_with: Subject(LobbyState))
 }
 
 // Define the actor's state
 pub type LobbyState {
-  LobbyState(player_progress: dict.Dict(String, String), GameState)
+  LobbyState(player_progress: dict.Dict(String, Float), GameStatus)
 }
 
 // Handle messages
@@ -41,4 +41,15 @@ pub fn lobby_handle_message(
       actor.continue(state)
     }
   }
+}
+
+// 1 - Send update when lobby is joined (when pending) 
+// 2 - Send update when other players join (when pending) ( same as 1)
+// 3 -  Send update when game started + Words
+// 4 - Send Periodic Update with game status
+// 5 - Send terminal Status
+
+
+pub fn send_update {
+
 }
