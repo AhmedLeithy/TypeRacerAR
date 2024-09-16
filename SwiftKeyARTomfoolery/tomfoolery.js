@@ -49,7 +49,7 @@ AFRAME.registerComponent('hit-test', {
 					// set the position of the models to the position of the target
 					const gltf = model.querySelector('a-gltf-model');
 					const isPlayer = model.getAttribute('id') === 'player';
-					const opacity = isPlayer ? 0.6 : 0.2;
+					const opacity = isPlayer ? 0.8 : 0.4;
 					// make the model semi transparent
 					let mesh = gltf.getObject3D('mesh');
 					mesh.traverse((node) => {
@@ -60,19 +60,20 @@ AFRAME.registerComponent('hit-test', {
 					});
 				});
 
-				messageEl.innerHTML = "Click on the button when you're done placing the cars.";
+				messageEl.innerHTML = "Click on the button when you're done placing the cars...";
 
 				// use the button to finalize the cars' position.
 				overlayBtn.style.display = 'block';
 				overlayBtn.innerHTML = "Done placing car";
-				// overlayBtn.addEventListener('click', function onfinishedplacing() {
-				// 	session.removeEventListener('select', onsessionselect);
-				// 	element.setAttribute('visible', false);
-				// 	overlayBtn.removeEventListener('click', onfinishedplacing);
-				// 	overlayBtn.style.display = 'none';
-				// 	gameStarted = true;
-				// 	startGame();
-				// });
+				session.removeEventListener('select', onsessionselect);
+				element.setAttribute('visible', false);
+				overlayBtn.addEventListener('click', function onfinishedplacing() {
+					element.setAttribute('visible', false);
+					overlayBtn.removeEventListener('click', onfinishedplacing);
+					overlayBtn.style.display = 'none';
+					gameStarted = true;
+					startGame();
+				});
 			});
 
 			session.requestReferenceSpace('viewer').then((space) => {
