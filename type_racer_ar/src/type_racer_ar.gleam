@@ -34,17 +34,12 @@ pub fn main() {
     response.new(404)
     |> response.set_body(mist.Bytes(bytes_builder.new()))
 
-  let assert Ok(future_time) = birl.now_with_offset("12:00")
+  // let assert Ok(future_time) = birl.now_with_offset("12:00")
 
   let new_lobby = create_new_empty_lobby(gen)
   let assert Ok(my_lobby_orchestrator_actor) =
     actor.start(
-      lobby_models.LobbyOrchestratorState(
-        new_lobby,
-        [],
-        dict.new(),
-        future_time,
-      ),
+      lobby_models.LobbyOrchestratorState(new_lobby, [], dict.new()),
       lobby_orchestrator_handle_message,
     )
 

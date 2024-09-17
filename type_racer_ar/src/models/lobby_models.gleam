@@ -54,6 +54,5 @@ pub type LobbyOrchestratorState {
     waiting_lobby: Lobby,
     active_lobbies: List(Lobby),
     player_to_lobby: dict.Dict(String, Lobby),
-    time_waiting: birl.Time,
   )
 }
