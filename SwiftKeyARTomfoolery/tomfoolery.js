@@ -3,6 +3,9 @@ const words = ["The best revenge is not to be like your enemy", "Be tolerant wit
 
 let gameStarted = false;
 let progress = 0;
+let player_id = null;
+
+let cars = ['ferrari_roma', 'chevrolet_camaro', 'audi_rs7', 'tesla_cybertruck', 'mazda_rx7', 'ferrari_br20'];
 
 AFRAME.registerComponent('hit-test', {
 	init: function() {
@@ -37,42 +40,33 @@ AFRAME.registerComponent('hit-test', {
 
 				let current_camera_rotation = camera.getAttribute('rotation');
 				target.setAttribute('rotation', { x: 0, y: current_camera_rotation.y - 180, z: 0 });
-
 				target.setAttribute('position', target_pos);
 				target.setAttribute('visible', true);
-
-				// get the child elements of the target that are gltf-models
-				let models = target.querySelectorAll('.player');
-
-				models.forEach((model, i) => {
-					model.object3D.position.x = i * 0.8;
-					// set the position of the models to the position of the target
-					const gltf = model.querySelector('a-gltf-model');
-					const isPlayer = model.getAttribute('id') === 'player';
-					const opacity = isPlayer ? 0.8 : 0.4;
-					// make the model semi transparent
-					let mesh = gltf.getObject3D('mesh');
-					mesh.traverse((node) => {
-						if (node.isMesh) {
-							node.material.transparent = true;
-							node.material.opacity = opacity
-						}
-					});
-				});
 
 				messageEl.innerHTML = "Click on the button when you're done placing the cars...";
 
 				// use the button to finalize the cars' position.
 				overlayBtn.style.display = 'block';
 				overlayBtn.innerHTML = "Done placing car";
-				session.removeEventListener('select', onsessionselect);
-				element.setAttribute('visible', false);
 				overlayBtn.addEventListener('click', function onfinishedplacing() {
+					messageEl.innerHTML = "Done placing cars! Waiting for other players...";
 					element.setAttribute('visible', false);
 					overlayBtn.removeEventListener('click', onfinishedplacing);
 					overlayBtn.style.display = 'none';
 					gameStarted = true;
-					startGame();
+
+					// simulate joining a game
+					player_id = "player";
+					let player_list = [
+						{ id: 'player', car: 0},
+						{ id: 'player2', car: 1},
+						{ id: 'player3', car: 1},
+						{ id: 'player4', car: 3},
+						{ id: 'player5', car: 4},
+						{ id: 'player6', car: 4}
+					];
+					addOrUpdatePlayers(player_list);
+					// startGame();
 				});
 			});
 
@@ -116,6 +110,59 @@ AFRAME.registerComponent('hit-test', {
 	}
 });
 
+function changeMeshOpacity(model, opacity) {
+	let mesh = model.getObject3D('mesh');
+	mesh.traverse((node) => {
+		if (node.isMesh) {
+			node.material.transparent = true;
+			node.material.opacity = opacity
+			node.material.needsUpdate = true;
+		}
+	});
+}
+
+function addOrUpdatePlayers(player_list) {
+	let target = document.getElementById('target');
+	let currentPlayers = target.querySelectorAll('.player');
+	let currentPlayerIds = Array.from(currentPlayers).map((player) => player.getAttribute('id'));
+	let playersToAdd = player_list.filter((player) => !currentPlayerIds.includes(player.id));
+	// let playersToRemove = currentPlayers.filter((player) => !player_list.map((player) => player.id).includes(player.getAttribute('id')));
+	// playersToRemove.forEach((playerEl) => {
+	// 	playerEl.remove();
+	// });
+	
+	if (target.getAttribute('visible') === false) {
+		target.setAttribute('visible', true);
+	}
+
+	let currentPlayerCarEntity = target.querySelector('#player');
+	let currentPlayerCar = currentPlayerCarEntity.querySelector('a-gltf-model');
+	let currentPlayerCarId = currentPlayerCar.getAttribute('src').replace('#', '');
+
+	if(currentPlayerCarId !== cars[player_list.find(p => p.id === player_id).car]) {
+		currentPlayerCar.setAttribute('src', `#${cars[player_list.find(p => p.id === player_id).car]}`);
+	}
+
+
+	currentPlayers = target.querySelectorAll('.player');
+	let lastPlayerPosition = currentPlayers.length > 0
+		? currentPlayers[currentPlayers.length - 1].getAttribute('position').clone()
+		: target.getAttribute('position').clone();
+
+	playersToAdd.forEach((player) => {
+		let newPlayer = document.createElement('a-entity');
+		newPlayer.setAttribute('id', player.id);
+		newPlayer.setAttribute('class', 'player');
+		newPlayer.setAttribute('position', `${lastPlayerPosition.x + 1} 0 ${lastPlayerPosition.z}`);
+		let gltf = document.createElement('a-gltf-model');
+		gltf.setAttribute('src', `#${cars[player.car]}`);
+		gltf.setAttribute('scale', '0.3 0.3 0.3');
+		newPlayer.appendChild(gltf);
+		target.appendChild(newPlayer);
+		lastPlayerPosition.x += 0.8;
+	});
+}
+
 AFRAME.registerComponent('ar-shadows', {
 	// Swap an object's material to a transparent shadows-only material while
 	// in AR mode. Intended for use with a ground plane.
@@ -130,15 +177,6 @@ AFRAME.registerComponent('ar-shadows', {
 		this.el.object3D.children[0].material = new THREE.ShadowMaterial();
 		this.el.object3D.children[0].material.opacity = this.data.opacity;
 		this.el.setAttribute('visible', true);
-		// }
-		// });
-		// this.el.sceneEl.addEventListener('exit-vr', () => {
-		// 	if (this.savedMaterial) {
-		// 		this.el.object3D.children[0].material = this.savedMaterial;
-		// 		this.savedMaterial = null;
-		// 	}
-		// 	if (!this.wasVisible) this.el.setAttribute('visible', false);
-		// });
 	}
 });
 

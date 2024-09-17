@@ -27,7 +27,9 @@
 					<a-asset-item id="ferrari_roma" src="static/models/ferrari_roma/scene.gltf"></a-asset-item>
 					<a-asset-item id="chevrolet_camaro" src="static/models/chevrolet_camaro/scene.gltf"></a-asset-item>
 					<a-asset-item id="audi_rs7" src="static/models/audi_rs7/scene.gltf"></a-asset-item>
-					<a-asset-item id="lada_vesta" src="static/models/lada_vesta/scene.gltf"></a-asset-item>
+					<a-asset-item id="tesla_cybertruck" src="static/models/tesla_cybertruck/scene.gltf"></a-asset-item>
+					<a-asset-item id="mazda_rx7" src="static/models/mazda_rx7/scene.gltf"></a-asset-item>
+					<a-asset-item id="ferrari_br20" src="static/models/ferrari_br20/scene.gltf"></a-asset-item>
 				</a-assets>
 
 				<a-light type="hemisphere" color="cyan" intensity="1"></a-light>
@@ -48,23 +50,14 @@
 							<a-light type="point" color="green" intensity="2" shadow="cast: true; receive: false"></a-light>
 						</a-cone>
 					</a-entity>
-					<a-entity class="player">
-						<a-gltf-model src="#chevrolet_camaro" shadow="cast: true; receive: true" scale="0.3 0.3 0.3">
-						</a-gltf-model>
-					</a-entity>
-					<a-entity class="player">
-						<a-gltf-model src="#audi_rs7" shadow="cast: true; receive: true" scale="0.3 0.3 0.3">
-						</a-gltf-model>
-					</a-entity>
-					<a-entity class="player">
-						<a-gltf-model src="#lada_vesta" shadow="cast: true; receive: true" scale="0.3 0.3 0.3">
-						</a-gltf-model>
-					</a-entity>
-					<a-plane height="1000" width="1000" rotation="-90 0 0"
-														position="0 0 0"
-				 shadow="receive: true"
-				 ar-shadows
-				 visible="false"></a-plane>
+					<a-plane height="1000" 
+							 width="1000" 
+							 rotation="-90 0 0"
+							 position="0 -0.001 0"
+							 shadow="receive: true"
+							 ar-shadows
+							 visible="false">
+					</a-plane>
 				</a-entity>
 
 				<a-entity gltf-model="#reticle" scale="0.5 0.5 0.5" position="0 0 -20" hit-test></a-entity>

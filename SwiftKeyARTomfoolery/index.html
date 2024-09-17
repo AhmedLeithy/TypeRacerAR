@@ -17,8 +17,6 @@
 
 		<a-scene xr-mode-ui="enabled: false;" shadow="type: pcfsoft" fog="type: exponential; color: white; density: 0.1; near: 0.1">
 			<a-assets>
-					<img id="concrete_normal" src="static/img/concrete_normal.jpg">
-					<img id="concrete" src="static/img/concrete.jpg">
 					<img id="ground" src="static/img/Gravel_001_BaseColor.jpg">
 					<img id="ground_normal" src="static/img/Gravel_001_Normal.jpg">
 					<img id="ground_height" src="static/img/Gravel_001_Height.png">
@@ -45,7 +43,7 @@
 			<a-entity car-select>
 				<a-entity id="highlight" visible="false">
 					<a-cone color="green" height="0.07" radius-bottom="0.04" radius-top="0" position="0 0.7 0" rotation="180 0 0" shadow="cast: false; receive: false" animation="property: position; to: 0 1.2 0; dir: alternate; dur: 1000; loop: true; easing: easeInOutSine"></a-cone>
-					<a-circle color="green" shadow="cast: false" radius="1" rotation="-90 0 0" material="opacity: 0.3; transparent: true; metalness: 0.0;" position="0 0.001 0"></a-circle>
+					<a-circle color="green" shadow="cast: false" radius="1" rotation="-90 0 0" material="opacity: 0.3; transparent: true; metalness: 0.0;" position="0 0.01 0"></a-circle>
 				</a-entity>
 
 				<a-text value="Select a car" align="center" color="darkblue" position="0 2 -3" scale="0.5 0.5 0.5" geometry="primitive:plane; width: 4" material="transparent: true; opacity: 0; fog: false;" id="text_select" anchor="center">
