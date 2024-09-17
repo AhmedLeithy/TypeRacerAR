@@ -1,6 +1,5 @@
-import actors/lobby_orchestrator.{
-  LobbyOrchestratorState, lobby_orchestrator_handle_message,
-}
+import actors/lobby.{create_new_empty_lobby}
+import actors/lobby_orchestrator.{lobby_orchestrator_handle_message}
 import birl
 import gleam/bit_array
 import gleam/bytes_builder
@@ -16,12 +15,17 @@ import gleam/otp/actor
 import gleam/result
 import gleam/string
 import mist.{type Connection, type ResponseData}
+import models/lobby_models
 import prng/random
 import prng/seed
 
+import gleam/json
 import socket/socket_handler.{SocketState, handle_ws_message}
+import utils/serialization
 
 pub fn main() {
+  io.debug(serialization.serialize("test", json.string("a")))
+
   // These values are for the Websocket process initialized below
   let selector = process.new_selector()
   let gen = random.int(0, 10_000_000_000)
@@ -30,11 +34,12 @@ pub fn main() {
     response.new(404)
     |> response.set_body(mist.Bytes(bytes_builder.new()))
 
-  let assert Ok(future_time) = birl.now_with_offset("12:00")
+  // let assert Ok(future_time) = birl.now_with_offset("12:00")
 
+  let new_lobby = create_new_empty_lobby(gen)
   let assert Ok(my_lobby_orchestrator_actor) =
     actor.start(
-      LobbyOrchestratorState([], [], dict.new(), future_time),
+      lobby_models.LobbyOrchestratorState(new_lobby, [], dict.new()),
       lobby_orchestrator_handle_message,
     )
 
@@ -59,5 +64,12 @@ pub fn main() {
     |> mist.port(3000)
     |> mist.start_http
 
-  process.sleep_forever()
+  recursively_timer(my_lobby_orchestrator_actor)
+  // process.sleep_forever()
+}
+
+fn recursively_timer(my_lobby_orchestrator_actor) {
+  process.sleep(500)
+  process.send(my_lobby_orchestrator_actor, lobby_models.LOGetResult)
+  recursively_timer(my_lobby_orchestrator_actor)
 }

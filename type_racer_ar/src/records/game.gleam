@@ -1,7 +1,14 @@
 // Define the actor's state
 
 pub type GameStatus {
-  Waiting
+  Pending
   Running
   Finished
 }
+
+pub type Sentences {
+  Sentences(List(String))
+}
+// StartGame {
+//   List(strings)
+// }

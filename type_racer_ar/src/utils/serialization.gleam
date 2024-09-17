@@ -1,9 +1,9 @@
-import actors/lobby.{type LobbyMsg, LGetResult, LMovePlayer}
 import decode
 import gleam/dict
 import gleam/dynamic.{type Dynamic, field, float, int, string}
 import gleam/io
-import gleam/json.{type DecodeError, UnexpectedSequence}
+import gleam/json.{type DecodeError, UnexpectedSequence, object}
+import models/lobby_models
 
 pub type ClientMessage {
   ClientMessage(type_: String, obj: String)
@@ -74,4 +74,10 @@ pub fn dict_to_string(dict: dict.Dict(String, String)) -> String {
   let json_obj = "{ " <> entries <> " }"
 
   json_obj
+}
+
+pub fn serialize(type_string: String, json: json.Json) -> String {
+  let obj_to_serialize =
+    object([#("type", json.string(type_string)), #("obj", json)])
+  json.to_string(obj_to_serialize)
 }
