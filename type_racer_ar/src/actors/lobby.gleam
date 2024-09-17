@@ -1,46 +1,215 @@
+import birl
+import birl/duration
 import gleam/dict
 import gleam/erlang/process.{type Subject}
+import gleam/int
 import gleam/io
+import gleam/iterator
+import gleam/json
+import gleam/option.{type Option, None, Some}
+import gleam/order
 import gleam/otp/actor
-import records/game.{type GameStatus}
-
-pub type Lobby {
-  Lobby(lobby_id: String, actor: process.Subject(LobbyMsg))
-  // active player ids?
-}
-
-// Define a message type
-pub type LobbyMsg {
-  LMovePlayer(String, Float)
-  LGetResult(reply_with: Subject(LobbyState))
-}
-
-// Define the actor's state
-pub type LobbyState {
-  LobbyState(player_progress: dict.Dict(String, Float), GameStatus)
-}
+import mist
+import models/lobby_models
+import prng/random
+import prng/seed
+import records/game.{type GameStatus, Finished, Pending, Running}
+import records/player.{type Player}
+import utils/constants.{max_duration, max_player_limit, sentences}
+import utils/serialization
 
 // Handle messages
 pub fn lobby_handle_message(
-  msg: LobbyMsg,
-  state: LobbyState,
-) -> actor.Next(LobbyMsg, LobbyState) {
+  msg: lobby_models.LobbyMsg,
+  state: lobby_models.LobbyState,
+) -> actor.Next(lobby_models.LobbyMsg, lobby_models.LobbyState) {
   case msg {
-    LMovePlayer(player_name, new_progress) -> {
-      let new_state_dict =
-        state.player_progress
-        |> dict.insert(player_name, new_progress)
+    lobby_models.LMovePlayer(player_name, new_progress) -> {
+      // let new_state_dict =
+      //   state.player_progress
+      //   |> dict.insert(player_name, new_progress)
 
-      let new_state = LobbyState(..state, player_progress: new_state_dict)
-      io.debug(new_state)
-      actor.continue(new_state)
-    }
-
-    LGetResult(client) -> {
-      process.send(client, state)
+      // let new_state = LobbyState(..state, player_progress: new_state_dict)
+      // io.debug(new_state)
+      todo
       actor.continue(state)
     }
+    lobby_models.LGetResult -> {
+      case state.status {
+        Pending -> {
+          let new_state =
+            check_if_time_to_run(state, None, lobby_models.Success)
+          actor.continue(new_state)
+        }
+        Running -> {
+          send_updates(state)
+          actor.continue(state)
+        }
+        Finished -> {
+          io.debug("Warning: send status reached finished lobby")
+          actor.continue(state)
+        }
+      }
+    }
+    lobby_models.LAddPlayer(player, client) -> {
+      let new_state = add_player(state, client, player)
+      actor.continue(new_state)
+    }
   }
+}
+
+// FUNCTION MUST UPDATE THE CLIENT
+pub fn add_player(
+  state: lobby_models.LobbyState,
+  client: Subject(lobby_models.LobbyAddPlayerResult),
+  player: player.Player,
+) -> lobby_models.LobbyState {
+  case state.status {
+    Pending -> {
+      // check if user already in list
+      let player_already_waiting =
+        state.player_progress
+        |> dict.has_key(player.player_uuid)
+
+      case player_already_waiting {
+        False -> {
+          io.debug("Added player to lobby: " <> player.player_uuid)
+          let new_dict =
+            state.player_progress
+            |> dict.insert(player.player_uuid, player)
+
+          let waiting_player_count = new_dict |> dict.size()
+          let new_waiting_time = case waiting_player_count {
+            1 -> {
+              Some(birl.utc_now())
+            }
+            _ -> {
+              None
+            }
+          }
+
+          let new_state =
+            lobby_models.LobbyState(
+              ..state,
+              start_waiting_time: new_waiting_time,
+              player_progress: new_dict,
+            )
+
+          // Check if should start
+          let final_state =
+            check_if_should_add_player_and_run(
+              new_state,
+              client,
+              lobby_models.Success,
+            )
+          final_state
+        }
+        True -> {
+          io.debug("player already waiting: " <> player.player_uuid)
+          process.send(client, lobby_models.AlreadyAdded)
+          state
+        }
+      }
+      // Add player logic if there is space
+      state
+    }
+    _ -> {
+      process.send(client, lobby_models.AlreadyStarted)
+      state
+    }
+  }
+}
+
+pub fn create_new_empty_lobby(gen: random.Generator(Int)) -> lobby_models.Lobby {
+  // gen id
+  let #(random_int, updated_seed) = gen |> random.step(seed.random())
+  let lobby_id = "game_lobby_" <> int.to_string(random_int)
+
+  // lobby message
+  let lobby_init_state =
+    lobby_models.LobbyState(Pending, None, None, dict.new())
+  let assert Ok(new_lobby_actor) =
+    actor.start(lobby_init_state, lobby_handle_message)
+  lobby_models.Lobby(lobby_id, new_lobby_actor)
+}
+
+pub fn check_if_time_to_run(
+  state: lobby_models.LobbyState,
+  optional_client: option.Option(Subject(lobby_models.LobbyAddPlayerResult)),
+  default_add_player_result,
+) -> lobby_models.LobbyState {
+  io.debug("checking if time to run")
+  // check time
+  case state.start_waiting_time {
+    Some(time_value) -> {
+      let from_start_to_now = birl.difference(time_value, birl.utc_now())
+      let order = duration.compare(from_start_to_now, max_duration)
+      case order {
+        order.Lt -> {
+          case optional_client {
+            Some(client) -> process.send(client, default_add_player_result)
+            None -> Nil
+          }
+          state
+        }
+        _ -> {
+          let new_state = start_lobby(state)
+          case optional_client {
+            Some(client) -> process.send(client, lobby_models.AddedWillStart)
+            None -> Nil
+          }
+          new_state
+        }
+      }
+    }
+    None -> {
+      io.debug("ERROR!! NO START TIME SET")
+      case optional_client {
+        Some(client) -> process.send(client, default_add_player_result)
+        None -> Nil
+      }
+      state
+    }
+  }
+}
+
+// FUNCTION MUST UPDATE THE CLIENT
+pub fn check_if_should_add_player_and_run(
+  state: lobby_models.LobbyState,
+  client: Subject(lobby_models.LobbyAddPlayerResult),
+  default_add_player_result: lobby_models.LobbyAddPlayerResult,
+) -> lobby_models.LobbyState {
+  // Max user count reached
+  let waiting_user_count =
+    state.player_progress
+    |> dict.size()
+  case waiting_user_count {
+    i if i == max_player_limit -> {
+      let new_state = start_lobby(state)
+      process.send(client, lobby_models.AddedWillStart)
+      new_state
+    }
+    i if i < max_player_limit -> {
+      check_if_time_to_run(state, Some(client), default_add_player_result)
+    }
+    i if i > max_player_limit -> {
+      io.debug("ERROR!! LobbyAlready full")
+      process.send(client, lobby_models.LobbyFull)
+      state
+    }
+
+    _ -> {
+      io.debug("How is it not greater than, less than or equal")
+      state
+    }
+  }
+}
+
+pub fn start_lobby(state: lobby_models.LobbyState) -> lobby_models.LobbyState {
+  let new_state = lobby_models.LobbyState(..state, status: Running)
+  send_start_game_message(new_state)
+  send_updates(new_state)
+  new_state
 }
 
 // 1 - Send update when lobby is joined (when pending) 
@@ -49,7 +218,41 @@ pub fn lobby_handle_message(
 // 4 - Send Periodic Update with game status
 // 5 - Send terminal Status
 
+pub fn send_updates(state: lobby_models.LobbyState) {
+  state.player_progress
+  |> dict.each(fn(player_uuid, player) {
+    let conn = player.connection
+    mist.send_text_frame(conn, "A")
+  })
+}
 
-pub fn send_update {
+fn send_start_game_message(state: lobby_models.LobbyState) {
+  let words_response = generate_words()
+  let gen =
+    serialization.serialize(
+      constants.join_response_type,
+      json.array(words_response, json.string),
+    )
+  state.player_progress
+  |> dict.each(fn(player_uuid, player) {
+    let conn = player.connection
+    mist.send_text_frame(conn, gen)
+  })
+  state
+}
 
+fn generate_words() -> List(String) {
+  case sentences {
+    [first_element, ..rest] -> {
+      let gen = random.uniform(first_element, rest)
+      let iterator = random.to_random_iterator(gen)
+
+      iterator
+      |> iterator.take(up_to: 10)
+      |> iterator.to_list
+    }
+    _ -> {
+      ["Issue", "With", "Backend", "!"]
+    }
+  }
 }

@@ -1,5 +1,3 @@
-import actors/lobby.{type LobbyMsg, LGetResult, LMovePlayer}
-import actors/lobby_orchestrator.{type LobbyOrchestratorMsg, LOJoinLobbyRequest}
 import gleam/dict
 import gleam/erlang/process
 import gleam/int
@@ -7,6 +5,7 @@ import gleam/io
 import gleam/otp/actor
 import gleam/string
 import mist.{type Connection, type ResponseData}
+import models/lobby_models
 import prng/random.{type Generator}
 import prng/seed
 import utils/serialization.{
@@ -16,7 +15,7 @@ import utils/serialization.{
 
 pub type SocketState {
   SocketState(
-    lobby_orchestrator_actor: process.Subject(LobbyOrchestratorMsg),
+    lobby_orchestrator_actor: process.Subject(lobby_models.LobbyOrchestratorMsg),
     player_id: String,
     player_name: String,
     id_gen: Generator(Int),
@@ -43,7 +42,7 @@ pub fn handle_ws_message(state: SocketState, conn, message) {
 
               io.debug(state)
               let lo_actor_message =
-                LOJoinLobbyRequest(
+                lobby_models.LOJoinLobbyRequest(
                   player_name,
                   player_uuid_resolved,
                   car_id,
