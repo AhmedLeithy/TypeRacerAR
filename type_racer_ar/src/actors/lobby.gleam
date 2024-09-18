@@ -14,7 +14,9 @@ import models/lobby_models
 import prng/random
 import prng/seed
 import records/game.{type GameStatus, Finished, Pending, Running}
-import utils/constants.{max_duration, max_player_limit, sentences}
+import utils/constants.{
+  max_game_duration, max_player_limit, max_wait_duration, sentences,
+}
 import utils/serialization
 
 // Handle messages
@@ -146,7 +148,7 @@ pub fn check_if_time_to_run(
   case state.start_waiting_time {
     Some(time_value) -> {
       let from_start_to_now = birl.difference(birl.utc_now(), time_value)
-      let order = duration.compare(from_start_to_now, max_duration)
+      let order = duration.compare(from_start_to_now, max_wait_duration)
       io.debug(from_start_to_now)
       case order {
         order.Lt -> {
@@ -299,7 +301,7 @@ fn move_player_and_update_state(
         |> dict.insert(player.player_uuid, new_player)
 
       lobby_models.LobbyState(..state, player_progress: new_dict)
-      |> update_game_state_after_progress_update(state, new_dict)
+      |> update_game_state_after_progress_update(new_dict)
     }
     Error(e) -> {
       io.debug("PLAYER NOT FOUND IN LOBBY PROGRESSION QUEUE")
@@ -312,7 +314,25 @@ fn update_game_state_after_progress_update(
   state: lobby_models.LobbyState,
   dict: dict.Dict(string, lobby_models.Player),
 ) -> lobby_models.LobbyState {
-  todo
+  let all_done =
+    dict
+    |> dict.fold(True, fn(accumulator, key, value) {
+      accumulator && value.progress == 100.0
+    })
+
+  case all_done {
+    True -> {
+      end_lobby(state)
+    }
+    False -> {
+      state
+    }
+  }
+}
+
+//TODO
+fn end_lobby(state) {
+  state
 }
 
 fn update_player_after_progress_update(
