@@ -60,7 +60,7 @@ pub fn main() {
     }
     |> mist.new
     |> mist.port(3000)
-    |> mist.start_http
+    |> mist.start_http_server
   timer_execution_loop(my_lobby_orchestrator_actor, main_process_subject)
   // process.sleep_forever()
 }

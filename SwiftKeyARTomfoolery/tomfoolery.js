@@ -1,10 +1,16 @@
+window.onload = function() {
+	const wss = new WebSocket('https://clever-bushes-speak.loca.lt/ws');
+	wss.addEventListener('open', function() {
+		console.log('Connected to server');
+		});
+};
 // stoic quotes
 const words = ["The best revenge is not to be like your enemy", "Be tolerant with others and strict with yourself", "The key is to keep company only with people who uplift you, whose presence calls forth your best", "The happiness of your life depends upon the quality of your thoughts", "The soul becomes dyed with the color of its thoughts", "The impediment to action advances action. What stands in the way becomes the way", "The best revenge is not to be like your enemy", "The best revenge is massive success"]
 
 let donePlacing = false;
 let progress = 0;
 let player_id = null;
-
+var ws;
 let cars = ['ferrari_roma', 'chevrolet_camaro', 'audi_rs7', 'tesla_cybertruck', 'mazda_rx7', 'ferrari_br20'];
 
 AFRAME.registerComponent('hit-test', {
@@ -61,6 +67,45 @@ AFRAME.registerComponent('hit-test', {
 					overlayBtn.style.display = 'none';
 					donePlacing = true;
 
+					// get current car id
+					const searchParams = new URLSearchParams(window.location.search);
+					const car = searchParams.get('car');
+					const carId = cars.indexOf(car);
+
+					if (!ws || ws.readyState !== ws.OPEN) {
+						ws = initWS();
+					}
+
+					// send join message
+					ws.addEventListener('open', () => {
+						let joinMsg = {
+							type: 'join',
+							obj: JSON.stringify({
+								player_name: 'Alpha',
+								player_uuid: '',
+								car_id: carId
+							})
+						};
+						ws.send(JSON.stringify(joinMsg));
+					});
+					ws.addEventListener('message', (event) => {
+						let msg = JSON.parse(event.data);
+						if (msg.type === 'state') {
+							let state = JSON.parse(msg.obj);
+							player_id = state.player_uuid;
+							let player_list = state.player_progress.map((player) => {
+								return {
+									id: player.player_uuid,
+									car: player.car_id,
+									progress: player.progress
+								};
+							});
+							addOrUpdatePlayers(player_list);
+							return;
+						}
+					});
+
+					return;
 					// simulate joining a game
 					player_id = "10";
 					let player_list = [
@@ -214,9 +259,7 @@ AFRAME.registerComponent('ar-shadows', {
 		opacity: { default: 0.3 }
 	},
 	init: function() {
-		// this.el.sceneEl.addEventListener('enter-vr', () => {
 		this.wasVisible = this.el.getAttribute('visible');
-		// if (this.el.sceneEl.is('ar-mode')) {
 		this.savedMaterial = this.el.object3D.children[0].material;
 		this.el.object3D.children[0].material = new THREE.ShadowMaterial();
 		this.el.object3D.children[0].material.opacity = this.data.opacity;
@@ -349,9 +392,6 @@ AFRAME.registerComponent('mesh-opacity', {
 	}
 });
 
-AFRAME.registerComponent('depth', {
-	init: function() {
-		this.el.addEventListener('model-loaded', () => {
-		});
-	}
-});
+function initWS() {
+	return new WebSocket('http://192.178.1.8:3000/ws');
+}
