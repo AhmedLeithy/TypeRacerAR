@@ -4,6 +4,8 @@
 		<meta charset="UTF-8">
 		<title>AR Tomfoolery</title>
 		<script src="./static/js/aframe.min.js"></script>
+		<script src="./static/js/enva.js"></script>
+		<script src="./static/js/enva.js.map"></script>
 		<script src="tomfoolery.js"></script>
 		<link rel="stylesheet" href="overlaystyle.css">
 	</head>
@@ -15,13 +17,14 @@
 			</div>
 		</div>
 		<a-scene
-				webxr="requiredFeatures:hit-test,local-floor;overlayElement:#overlay"
+				webxr="requiredFeatures:hit-test,local-floor;overlayElement:#overlay; optionalFeatures:depth-sensing;"
 				background="color:white;"
 				reflection="directionalLight:#dirLight;"
 				shadow="type: pcfsoft"
 				renderer="logarithmicDepthBuffer: true;"
 				xr-mode-ui="XRMode: ar">
 				<a-assets>
+					<img id="disconnect" src="static/img/disconnect.png">
 					<a-asset-item id="trophy" src="static/models/trophy/scene.gltf"></a-asset-item>
 					<a-asset-item id="reticle" src="reticle.gltf" responseType="arraybuffer"></a-asset-item>
 					<a-asset-item id="ferrari_roma" src="static/models/ferrari_roma/scene.gltf"></a-asset-item>
@@ -38,16 +41,16 @@
 				<a-text id="word" value="Hello" align="center" color="blue" position="0 5 0"></a-text>
 
 				<a-entity id="target" scale="0.15 0.15 0.15" position="0 -2 -0.5" visible="false">
-					<a-gltf-model id="finish" src="#trophy" shadow position="0 0 20" scale="5 5 5" 
-					animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear"
+					<a-gltf-model id="finish" src="#trophy" shadow position="2.25 0 20" scale="5 5 5" 
+					animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear" depth
 						></a-gltf-model>
-					<a-entity class="player" id="player">
-						<a-gltf-model src="#ferrari_roma" shadow="cast: true; receive: true" scale="0.3 0.3 0.3">
-						</a-gltf-model>
-						<a-cone color="green" height="0.1" radius-bottom="0.05" radius-top="0" position="0 1 0" rotation="180 0 0" shadow
-						 animation="property: position; to: 0 1.6 0; dir: alternate; dur: 1000; loop: true; easing: easeInOutSine"
-							>
-							<a-light type="point" color="green" intensity="2" shadow="cast: true; receive: false"></a-light>
+					<a-entity id="track">
+						<a-entity line="start: -0.5 0 0; end: -0.5 0 20; color: white;"></a-entity>
+						<a-entity line="start: 5 0 0; end: 5 0 20; color: white;"></a-entity>
+					</a-entity>
+					<a-entity class="player" id="current_player">
+						<a-cone color="green" height="0.1" radius-bottom="0.05" radius-top="0" position="0 0.9 0" rotation="180 0 0" 
+						 animation="property: position; to: 0 1.5 0; dir: alternate; dur: 1000; loop: true; easing: easeInOutSine">
 						</a-cone>
 					</a-entity>
 					<a-plane height="1000" 
