@@ -43,7 +43,7 @@ pub fn on_init_with_orch(
       |> process.selecting(
         ws_subject,
         fn(message_to_client: lobby_models.MessageToClient) {
-          io.debug("Sending this to client " <> message_to_client.message)
+          // io.debug("Sending this to client " <> message_to_client.message)
           message_to_client
         },
       )

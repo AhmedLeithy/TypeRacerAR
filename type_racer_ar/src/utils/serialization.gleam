@@ -2,6 +2,7 @@ import birl/duration
 import decode
 import gleam/dict
 import gleam/dynamic.{type Dynamic, field, float, int, string}
+import gleam/int
 import gleam/io
 import gleam/json.{type DecodeError, UnexpectedSequence, object}
 import gleam/list
@@ -16,6 +17,10 @@ pub type ClientMessage {
 pub type ClientMessageCommand {
   JoinLobbyRequest(player_name: String, player_uuid: String, car_id: Int)
   MovePlayer(progress: Float)
+}
+
+pub type MovePlayerIntTemp {
+  MovePlayerIntTemp(progress: Int)
 }
 
 pub fn decode_message(
@@ -36,8 +41,10 @@ pub fn decode_message(
       field("car_id", of: int),
     )
 
-  let move_player_decoder =
+  let move_player_float_decoder =
     dynamic.decode1(MovePlayer, field("progress", of: float))
+  let move_player_int_decoder =
+    dynamic.decode1(MovePlayerIntTemp, field("progress", of: int))
 
   let client_message = json.decode(from: json_string, using: message_decoder)
   io.debug(client_message)
@@ -50,11 +57,28 @@ pub fn decode_message(
             deserialized_client_message.obj,
             using: join_lobby_decoder,
           )
-        "progress" ->
-          json.decode(
-            deserialized_client_message.obj,
-            using: move_player_decoder,
-          )
+        "progress" -> {
+          case
+            json.decode(
+              deserialized_client_message.obj,
+              using: move_player_float_decoder,
+            )
+          {
+            Ok(res) -> Ok(res)
+            Error(_) -> {
+              let move_player_int =
+                json.decode(
+                  deserialized_client_message.obj,
+                  using: move_player_int_decoder,
+                )
+              case move_player_int {
+                Ok(int_res) ->
+                  Ok(MovePlayer(progress: int.to_float(int_res.progress)))
+                Error(e) -> Error(e)
+              }
+            }
+          }
+        }
         _ -> Error(UnexpectedSequence("unexpected sequence"))
       }
     }

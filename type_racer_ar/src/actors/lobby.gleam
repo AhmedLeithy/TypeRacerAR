@@ -332,7 +332,9 @@ fn update_game_state_after_progress_update(
 
 // TODO
 fn end_lobby(state) {
-  state
+  let end_state = lobby_models.LobbyState(..state, status: game.Finished)
+  send_updates(end_state)
+  end_state
 }
 
 fn update_player_after_progress_update(
