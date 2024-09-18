@@ -68,7 +68,7 @@ Update State Message (When joining lobby, when waiting, when game is running and
   }
 }
 ```
-On Game Joining
+On Game Start
 ```json
 {
   "type": "join",
