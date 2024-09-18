@@ -1,7 +1,10 @@
+import actors/lobby
+import actors/lobby_orchestrator
 import gleam/dict
 import gleam/erlang/process
 import gleam/int
 import gleam/io
+import gleam/option
 import gleam/otp/actor
 import gleam/string
 import mist.{type Connection, type ResponseData}
@@ -19,15 +22,63 @@ pub type SocketState {
     player_id: String,
     player_name: String,
     id_gen: Generator(Int),
+    ws_subject: process.Subject(lobby_models.MessageToClient),
   )
 }
+
+pub fn on_init_with_orch(
+  lobby_orchestrator_actor: process.Subject(lobby_models.LobbyOrchestratorMsg),
+) -> fn(mist.WebsocketConnection) ->
+  #(SocketState, option.Option(process.Selector(lobby_models.MessageToClient))) {
+  io.debug("on_init_with_orch")
+  fn(connection: mist.WebsocketConnection) -> #(
+    SocketState,
+    option.Option(process.Selector(lobby_models.MessageToClient)),
+  ) {
+    io.debug("on_init")
+    let gen = random.int(0, 10_000_000_000)
+    let ws_subject = process.new_subject()
+    let selector =
+      process.new_selector()
+      |> process.selecting(
+        ws_subject,
+        fn(message_to_client: lobby_models.MessageToClient) {
+          io.debug("HEEEElp")
+          io.debug(message_to_client)
+        },
+      )
+    #(
+      SocketState(lobby_orchestrator_actor, "", "", gen, ws_subject),
+      option.Some(selector),
+    )
+  }
+}
+
+// pub fn on_init(
+//   connection: mist.WebsocketConnection,
+// ) -> #(
+//   SocketState,
+//   option.Option(process.Selector(lobby_models.MessageToClient)),
+// ) {
+//   let gen = random.int(0, 10_000_000_000)
+//   let ws_subject = process.new_subject()
+//   let new_lobby = lobby.create_new_empty_lobby(gen, ws_subject)
+//   let selector = process.new_selector()
+
+//   #(
+//     SocketState(my_lobby_orchestrator_actor, "", "", gen),
+//     option.Some(selector),
+//   )
+// }
 
 pub fn handle_ws_message(state: SocketState, conn, message) {
   case message {
     mist.Text("ping") -> {
       let assert Ok(_) = mist.send_text_frame(conn, "pong")
-      io.debug(state)
-      io.debug(conn)
+      // io.debug(state)
+      // io.debug(conn)
+      // process.sleep_forever()
+      // io.debug("ay 7aga")
       actor.continue(state)
     }
     mist.Text(json_string) -> {
@@ -40,14 +91,18 @@ pub fn handle_ws_message(state: SocketState, conn, message) {
               let player_uuid_resolved =
                 get_player_id(player_uuid, player_name, state)
 
-              io.debug(state)
-              let lo_actor_message =
-                lobby_models.LOJoinLobbyRequest(
-                  player_name,
-                  player_uuid_resolved,
-                  car_id,
-                  conn,
+              let new_player =
+                lobby_models.Player(
+                  player_name: player_name,
+                  player_uuid: player_uuid_resolved,
+                  car_id: car_id,
+                  progress: 0.0,
+                  connection: conn,
+                  ws_subject: state.ws_subject,
+                  play_time: option.None,
                 )
+              io.debug(new_player)
+              let lo_actor_message = lobby_models.LOJoinLobbyRequest(new_player)
 
               process.send(state.lobby_orchestrator_actor, lo_actor_message)
 
@@ -84,12 +139,22 @@ pub fn handle_ws_message(state: SocketState, conn, message) {
         }
       }
     }
+    mist.Custom(lobby_models.MessageToClient(conn, message_string)) -> {
+      io.debug("mist custom")
+      mist.send_text_frame(conn, message_string)
+      actor.continue(state)
+    }
     mist.Closed | mist.Shutdown -> actor.Stop(process.Normal)
     _ | mist.Text(_) | mist.Binary(_) -> {
       io.debug("welp nothing happened")
       actor.continue(state)
     }
   }
+}
+
+pub fn send_socket_test(conn: mist.WebsocketConnection) -> Int {
+  mist.send_text_frame(conn, "woohoo")
+  1
 }
 
 pub fn get_player_id(

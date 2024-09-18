@@ -10,7 +10,6 @@ import gleam/otp/actor
 import mist.{type WebsocketConnection}
 import models/lobby_models
 import prng/random
-import records/player.{type Player}
 
 // Handle messages
 pub fn lobby_orchestrator_handle_message(
@@ -21,24 +20,30 @@ pub fn lobby_orchestrator_handle_message(
   lobby_models.LobbyOrchestratorState,
 ) {
   case lobby_orchestrator_msg {
-    lobby_models.LOJoinLobbyRequest(
-      player_name,
-      player_uuid,
-      car_id,
-      connection,
-    ) -> {
-      let new_state =
-        add_waiting_user(player_uuid, player_name, car_id, connection, state)
+    lobby_models.LOJoinLobbyRequest(player) -> {
+      let new_state = add_waiting_user(player, state)
       io.debug(new_state)
       actor.continue(new_state)
       // Ready includes status + {pllayer uuid}
     }
     lobby_models.LOMovePlayer(player_uuid, new_progress) -> {
-      // TODO
-      let lobby =
+      let lobby_result =
         state.player_to_lobby
         |> dict.get(player_uuid)
 
+      case lobby_result {
+        Ok(lobby) -> {
+          process.send(
+            lobby.actor,
+            lobby_models.LMovePlayer(player_uuid, new_progress),
+          )
+          Nil
+        }
+        Error(_) -> {
+          io.debug("ERROR: MOVING PLAYER THAT DOESNT EXIST IN LOBBIES")
+          Nil
+        }
+      }
       actor.continue(state)
     }
     lobby_models.LOGetResult -> {
@@ -54,17 +59,9 @@ fn send_lobby_status_request(lobby: lobby_models.Lobby) {
 }
 
 fn add_waiting_user(
-  player_uuid: String,
-  player_name: String,
-  car_id: Int,
-  conn: WebsocketConnection,
+  player: lobby_models.Player,
   state: lobby_models.LobbyOrchestratorState,
 ) -> lobby_models.LobbyOrchestratorState {
-  // CALL CHECK IF WE CAN START LOBBY
-  // should_start_lobby(state)
-  let player =
-    player.Player(player_name, player_uuid, car_id, conn, option.None)
-
   let subject = process.new_subject()
 
   let add_player_state =
@@ -77,8 +74,8 @@ fn add_waiting_user(
     Ok(add_player_result_ok) -> {
       case add_player_result_ok {
         lobby_models.Success -> {
-          io.debug("LO: Successfully added play")
-          state
+          io.debug("LO: Successfully added player")
+          add_player_to_dict(state, player.player_uuid)
         }
         lobby_models.AlreadyAdded -> {
           io.debug("LO: Already Added")
@@ -86,22 +83,19 @@ fn add_waiting_user(
         }
         lobby_models.AddedWillStart -> {
           io.debug("LO: Successfully added, will start game")
-          start_waiting_lobby(state)
+          add_player_to_dict(state, player.player_uuid)
+          |> start_waiting_lobby()
         }
         lobby_models.LobbyFull -> {
-          io.debug(
-            "LO: LOBBY FULL SHOULDNT HAPPEN UNLESS RACE CONDITION OR LOGICAL ERROR",
-          )
+          io.debug("LO: LOBBY FULL")
           let new_state = start_waiting_lobby(state)
-          add_waiting_user(player_uuid, player_name, car_id, conn, new_state)
+          add_waiting_user(player, new_state)
         }
         lobby_models.AlreadyStarted -> {
-          io.debug(
-            "LO: LOBBY ALREADY STARTED SHOULDNT HAPPEN UNLESS RACE CONDITION OR LOGICAL ERROR",
-          )
+          io.debug("LO: LOBBY ALREADY STARTED")
           start_waiting_lobby(state)
           let new_state = start_waiting_lobby(state)
-          add_waiting_user(player_uuid, player_name, car_id, conn, new_state)
+          add_waiting_user(player, new_state)
         }
       }
     }
@@ -113,6 +107,17 @@ fn add_waiting_user(
 
   new_state
   // try add player to waiting lobby
+}
+
+fn add_player_to_dict(
+  state: lobby_models.LobbyOrchestratorState,
+  player_uuid: String,
+) -> lobby_models.LobbyOrchestratorState {
+  let new_dict =
+    state.player_to_lobby
+    |> dict.insert(player_uuid, state.waiting_lobby)
+
+  lobby_models.LobbyOrchestratorState(..state, player_to_lobby: new_dict)
 }
 
 fn start_waiting_lobby(
