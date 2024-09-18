@@ -1,7 +1,7 @@
 // stoic quotes
 const words = ["The best revenge is not to be like your enemy", "Be tolerant with others and strict with yourself", "The key is to keep company only with people who uplift you, whose presence calls forth your best", "The happiness of your life depends upon the quality of your thoughts", "The soul becomes dyed with the color of its thoughts", "The impediment to action advances action. What stands in the way becomes the way", "The best revenge is not to be like your enemy", "The best revenge is massive success"]
 
-let gameStarted = false;
+let donePlacing = false;
 let progress = 0;
 let player_id = null;
 
@@ -30,6 +30,10 @@ AFRAME.registerComponent('hit-test', {
 			let camera = document.querySelector('[camera]');
 
 			session.addEventListener('select', function onsessionselect() {
+				if (donePlacing) {
+					return;
+				}
+
 				let target_pos = element.getAttribute('position');
 				let camera_pos = camera.getAttribute('position');
 
@@ -48,24 +52,38 @@ AFRAME.registerComponent('hit-test', {
 				// use the button to finalize the cars' position.
 				overlayBtn.style.display = 'block';
 				overlayBtn.innerHTML = "Done placing car";
-				overlayBtn.addEventListener('click', function onfinishedplacing() {
+
+				overlayBtn.addEventListener('click', function onfinishedplacing(evt) {
+					evt.stopPropagation();
 					messageEl.innerHTML = "Done placing cars! Waiting for other players...";
 					element.setAttribute('visible', false);
 					overlayBtn.removeEventListener('click', onfinishedplacing);
 					overlayBtn.style.display = 'none';
-					gameStarted = true;
+					donePlacing = true;
 
 					// simulate joining a game
-					player_id = "player";
+					player_id = "10";
 					let player_list = [
-						{ id: 'player', car: 0},
-						{ id: 'player2', car: 1},
-						{ id: 'player3', car: 1},
-						{ id: 'player4', car: 3},
-						{ id: 'player5', car: 4},
-						{ id: 'player6', car: 4}
+						{ id: player_id, car: 0, progress: 0.0 },
+						{ id: 'player2', car: 1, progress: 0.0 },
+						{ id: 'player3', car: 2, progress: 0.0 },
+						{ id: 'player4', car: 3, progress: 0.0 },
+						{ id: 'player5', car: 4, progress: 0.0 },
+						{ id: 'player6', car: 5, progress: 0.0 }
 					];
 					addOrUpdatePlayers(player_list);
+
+					// simulate players disconnecting
+					setTimeout(() => {
+						player_list = player_list.slice(0, 4);
+						addOrUpdatePlayers(player_list);
+					}, 4000);
+
+					// simulate player progress update
+					setTimeout(() => {
+						player_list.forEach((player, i) => { player.progress = 10 * i });
+						addOrUpdatePlayers(player_list);
+					}, 8000);
 					// startGame();
 				});
 			});
@@ -84,7 +102,7 @@ AFRAME.registerComponent('hit-test', {
 		});
 	},
 	tick: function() {
-		if (gameStarted) {
+		if (donePlacing) {
 			return;
 		}
 		if (this.el.sceneEl.is('ar-mode')) {
@@ -110,39 +128,62 @@ AFRAME.registerComponent('hit-test', {
 	}
 });
 
-function changeMeshOpacity(model, opacity) {
-	let mesh = model.getObject3D('mesh');
-	mesh.traverse((node) => {
-		if (node.isMesh) {
-			node.material.transparent = true;
-			node.material.opacity = opacity
-			node.material.needsUpdate = true;
-		}
-	});
-}
-
 function addOrUpdatePlayers(player_list) {
 	let target = document.getElementById('target');
+
+	// current player not added yet
+	let currentPlayerCarEntity = target.querySelector('#current_player');
+	if (currentPlayerCarEntity) {
+		const searchParams = new URLSearchParams(window.location.search);
+		const car = searchParams.get('car');
+
+		currentPlayerCarEntity.setAttribute('id', player_id);
+		let currentPlayerCar = document.createElement('a-gltf-model');
+		currentPlayerCar.setAttribute('scale', '0.3 0.3 0.3');
+		currentPlayerCar.setAttribute('src', `#${car}`);
+		currentPlayerCarEntity.appendChild(currentPlayerCar);
+	}
+
 	let currentPlayers = target.querySelectorAll('.player');
 	let currentPlayerIds = Array.from(currentPlayers).map((player) => player.getAttribute('id'));
+	let playersToRemove = Array.from(currentPlayers).filter((player) => !player_list.map(p => p.id).includes(player.getAttribute('id')));
+	playersToRemove.forEach((player) => {
+		// show a disconnect logo above the player
+		const disconnectImg = document.createElement('a-image');
+		disconnectImg.setAttribute('src', '#disconnect');
+		disconnectImg.setAttribute('scale', '0.5 0.5 0.5');
+		disconnectImg.setAttribute('rotation', '90 0 0');
+		disconnectImg.setAttribute('position', '0 1 0');
+		player.appendChild(disconnectImg);
+
+		// remove the player after 2 seconds
+		setTimeout(() => {
+			player.parentNode.removeChild(player);
+		}, 2000);
+	});
+
+	// update progress
+	currentPlayers = target.querySelectorAll('.player');
+	currentPlayers.forEach((player) => {
+		let playerObj = player_list.find((p) => p.id === player.getAttribute('id'));
+		let playerProgress = playerObj.progress;
+		let playerPosition = player.getAttribute('position');
+		let start = target.getAttribute('position');
+		let finish = document.getElementById('finish').getAttribute('position');
+		let totalDistance = Math.abs(start.z - finish.z);
+		let progressInMeters = (playerProgress * totalDistance) / 100;
+		let targetPosition = `${playerPosition.x} ${playerPosition.y} ${progressInMeters}`;
+
+		player.setAttribute('animation', {
+			property: 'position',
+			to: targetPosition,
+			dur: 1000,
+			easing: 'easeInOutQuad'
+		});
+	});
+
 	let playersToAdd = player_list.filter((player) => !currentPlayerIds.includes(player.id));
-	// let playersToRemove = currentPlayers.filter((player) => !player_list.map((player) => player.id).includes(player.getAttribute('id')));
-	// playersToRemove.forEach((playerEl) => {
-	// 	playerEl.remove();
-	// });
-	
-	if (target.getAttribute('visible') === false) {
-		target.setAttribute('visible', true);
-	}
-
-	let currentPlayerCarEntity = target.querySelector('#player');
-	let currentPlayerCar = currentPlayerCarEntity.querySelector('a-gltf-model');
-	let currentPlayerCarId = currentPlayerCar.getAttribute('src').replace('#', '');
-
-	if(currentPlayerCarId !== cars[player_list.find(p => p.id === player_id).car]) {
-		currentPlayerCar.setAttribute('src', `#${cars[player_list.find(p => p.id === player_id).car]}`);
-	}
-
+	document.querySelector('#overlay-msg').innerHTML = `Players: ${playersToAdd.map(p => p.id).join(', ')}`;
 
 	currentPlayers = target.querySelectorAll('.player');
 	let lastPlayerPosition = currentPlayers.length > 0
@@ -153,13 +194,16 @@ function addOrUpdatePlayers(player_list) {
 		let newPlayer = document.createElement('a-entity');
 		newPlayer.setAttribute('id', player.id);
 		newPlayer.setAttribute('class', 'player');
-		newPlayer.setAttribute('position', `${lastPlayerPosition.x + 1} 0 ${lastPlayerPosition.z}`);
+		newPlayer.setAttribute('position', `${lastPlayerPosition.x + 0.8} 0 ${lastPlayerPosition.z}`);
+		newPlayer.setAttribute('mesh-opacity', { opacity: 0.5 });
+		lastPlayerPosition.x += 0.8;
+
 		let gltf = document.createElement('a-gltf-model');
 		gltf.setAttribute('src', `#${cars[player.car]}`);
 		gltf.setAttribute('scale', '0.3 0.3 0.3');
+
 		newPlayer.appendChild(gltf);
 		target.appendChild(newPlayer);
-		lastPlayerPosition.x += 0.8;
 	});
 }
 
@@ -286,5 +330,28 @@ AFRAME.registerComponent('car-select', {
 			});
 		});
 
+	}
+});
+
+AFRAME.registerComponent('mesh-opacity', {
+	schema: {
+		opacity: { default: 0.5 }
+	},
+	init: function() {
+		this.el.addEventListener('model-loaded', () => {
+			this.el.object3D.traverse((node) => {
+				if (node.material) {
+					node.material.transparent = true;
+					node.material.opacity = this.data.opacity;
+				}
+			});
+		});
+	}
+});
+
+AFRAME.registerComponent('depth', {
+	init: function() {
+		this.el.addEventListener('model-loaded', () => {
+		});
 	}
 });
