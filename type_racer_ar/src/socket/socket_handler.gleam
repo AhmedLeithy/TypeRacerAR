@@ -95,8 +95,6 @@ pub fn handle_ws_message(state: SocketState, conn, message) {
                   player_id: player_uuid_resolved,
                 )
 
-              let assert Ok(_) =
-                mist.send_text_frame(conn, player_uuid_resolved)
               actor.continue(new_state)
             }
             MovePlayer(progress) -> {
