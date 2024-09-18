@@ -71,7 +71,7 @@ Update State Message (When joining lobby, when waiting, when game is running and
 On Game Start
 ```json
 {
-  "type": "join",
+  "type": "start",
   "obj": [
     "The goal of life is living in agreement with nature.",
     "Don't explain your philosophy. Embody it.",
