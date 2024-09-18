@@ -5,7 +5,10 @@ pub const join_response_type = "join"
 
 pub const max_player_limit = 6
 
-pub const max_duration = duration.Duration(60_000_000)
+// pub const max_duration = duration.Duration(60_000_000)
+pub const max_wait_duration = duration.Duration(200_000)
+
+pub const max_game_duration = duration.Duration(200_000)
 
 pub const sentences = [
   "It's not what happens to you, but how you react to it that matters.",

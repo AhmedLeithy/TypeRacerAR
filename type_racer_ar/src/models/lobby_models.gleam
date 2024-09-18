@@ -1,10 +1,10 @@
 import birl
+import birl/duration.{type Duration}
 import gleam/dict
 import gleam/erlang/process.{type Subject}
 import gleam/option.{type Option}
-import mist
+import mist.{type WebsocketConnection}
 import records/game
-import records/player.{type Player}
 
 pub type Lobby {
   Lobby(lobby_id: String, actor: process.Subject(LobbyMsg))
@@ -15,7 +15,7 @@ pub type Lobby {
 pub type LobbyMsg {
   LMovePlayer(String, Float)
   LGetResult
-  LAddPlayer(player.Player, client: Subject(LobbyAddPlayerResult))
+  LAddPlayer(Player, client: Subject(LobbyAddPlayerResult))
 }
 
 // Define the actor's state
@@ -38,13 +38,8 @@ pub type LobbyAddPlayerResult {
 
 // Define a message type
 pub type LobbyOrchestratorMsg {
-  LOJoinLobbyRequest(
-    player_name: String,
-    player_uuid: String,
-    car_id: Int,
-    connection: mist.WebsocketConnection,
-  )
-  LOMovePlayer(player_uuid: String, String)
+  LOJoinLobbyRequest(player: Player)
+  LOMovePlayer(player_uuid: String, player_progress: Float)
   LOGetResult
 }
 
@@ -54,5 +49,22 @@ pub type LobbyOrchestratorState {
     waiting_lobby: Lobby,
     active_lobbies: List(Lobby),
     player_to_lobby: dict.Dict(String, Lobby),
+  )
+}
+
+pub type MessageToClient {
+  MessageToClient(connection: mist.WebsocketConnection, message: String)
+}
+
+// Define the actor's state
+pub type Player {
+  Player(
+    player_name: String,
+    player_uuid: String,
+    car_id: Int,
+    progress: Float,
+    connection: WebsocketConnection,
+    ws_subject: Subject(MessageToClient),
+    play_time: Option(Duration),
   )
 }

@@ -14,8 +14,9 @@ import models/lobby_models
 import prng/random
 import prng/seed
 import records/game.{type GameStatus, Finished, Pending, Running}
-import records/player.{type Player}
-import utils/constants.{max_duration, max_player_limit, sentences}
+import utils/constants.{
+  max_game_duration, max_player_limit, max_wait_duration, sentences,
+}
 import utils/serialization
 
 // Handle messages
@@ -24,15 +25,19 @@ pub fn lobby_handle_message(
   state: lobby_models.LobbyState,
 ) -> actor.Next(lobby_models.LobbyMsg, lobby_models.LobbyState) {
   case msg {
-    lobby_models.LMovePlayer(player_name, new_progress) -> {
-      // let new_state_dict =
-      //   state.player_progress
-      //   |> dict.insert(player_name, new_progress)
-
-      // let new_state = LobbyState(..state, player_progress: new_state_dict)
-      // io.debug(new_state)
-      todo
-      actor.continue(state)
+    lobby_models.LMovePlayer(player_uuid, new_progress) -> {
+      case state.status {
+        Running -> {
+          io.debug("Move status")
+          // CHECK CURRENT GAME STATE
+          move_player_and_update_state(state, player_uuid, new_progress)
+          |> actor.continue()
+        }
+        _ -> {
+          io.debug("WHY YOU SEND MOVE COMMAND WITH LOBBY FINISHED")
+          actor.continue(state)
+        }
+      }
     }
     lobby_models.LGetResult -> {
       case state.status {
@@ -53,6 +58,8 @@ pub fn lobby_handle_message(
     }
     lobby_models.LAddPlayer(player, client) -> {
       let new_state = add_player(state, client, player)
+      io.debug("STATE AFTER ADD PLAYER")
+      io.debug(new_state)
       actor.continue(new_state)
     }
   }
@@ -62,7 +69,7 @@ pub fn lobby_handle_message(
 pub fn add_player(
   state: lobby_models.LobbyState,
   client: Subject(lobby_models.LobbyAddPlayerResult),
-  player: player.Player,
+  player: lobby_models.Player,
 ) -> lobby_models.LobbyState {
   case state.status {
     Pending -> {
@@ -84,16 +91,18 @@ pub fn add_player(
               Some(birl.utc_now())
             }
             _ -> {
-              None
+              state.start_waiting_time
             }
           }
-
           let new_state =
             lobby_models.LobbyState(
               ..state,
               start_waiting_time: new_waiting_time,
               player_progress: new_dict,
             )
+
+          io.debug("new __ STATE -> ")
+          io.debug(new_state)
 
           // Check if should start
           let final_state =
@@ -110,8 +119,6 @@ pub fn add_player(
           state
         }
       }
-      // Add player logic if there is space
-      state
     }
     _ -> {
       process.send(client, lobby_models.AlreadyStarted)
@@ -122,7 +129,7 @@ pub fn add_player(
 
 pub fn create_new_empty_lobby(gen: random.Generator(Int)) -> lobby_models.Lobby {
   // gen id
-  let #(random_int, updated_seed) = gen |> random.step(seed.random())
+  let #(random_int, _) = gen |> random.step(seed.random())
   let lobby_id = "game_lobby_" <> int.to_string(random_int)
 
   // lobby message
@@ -142,8 +149,9 @@ pub fn check_if_time_to_run(
   // check time
   case state.start_waiting_time {
     Some(time_value) -> {
-      let from_start_to_now = birl.difference(time_value, birl.utc_now())
-      let order = duration.compare(from_start_to_now, max_duration)
+      let from_start_to_now = birl.difference(birl.utc_now(), time_value)
+      let order = duration.compare(from_start_to_now, max_wait_duration)
+      io.debug(from_start_to_now)
       case order {
         order.Lt -> {
           case optional_client {
@@ -206,7 +214,12 @@ pub fn check_if_should_add_player_and_run(
 }
 
 pub fn start_lobby(state: lobby_models.LobbyState) -> lobby_models.LobbyState {
-  let new_state = lobby_models.LobbyState(..state, status: Running)
+  let new_state =
+    lobby_models.LobbyState(
+      ..state,
+      status: Running,
+      start_time: Some(birl.utc_now()),
+    )
   send_start_game_message(new_state)
   send_updates(new_state)
   new_state
@@ -222,7 +235,17 @@ pub fn send_updates(state: lobby_models.LobbyState) {
   state.player_progress
   |> dict.each(fn(player_uuid, player) {
     let conn = player.connection
-    mist.send_text_frame(conn, "A")
+    process.send(
+      player.ws_subject,
+      lobby_models.MessageToClient(
+        player.connection,
+        serialization.seriailize_game_state(state, player_uuid),
+      ),
+    )
+    // process.send(
+    //   state.main_thread_subject,
+    //   lobby_models.MessageToClient(conn, "A"),
+    // )
   })
 }
 
@@ -236,7 +259,10 @@ fn send_start_game_message(state: lobby_models.LobbyState) {
   state.player_progress
   |> dict.each(fn(player_uuid, player) {
     let conn = player.connection
-    mist.send_text_frame(conn, gen)
+    process.send(
+      player.ws_subject,
+      lobby_models.MessageToClient(player.connection, gen),
+    )
   })
   state
 }
@@ -253,6 +279,88 @@ fn generate_words() -> List(String) {
     }
     _ -> {
       ["Issue", "With", "Backend", "!"]
+    }
+  }
+}
+
+fn move_player_and_update_state(
+  state: lobby_models.LobbyState,
+  player_uuid: String,
+  new_progress: Float,
+) -> lobby_models.LobbyState {
+  let find_player =
+    state.player_progress
+    |> dict.get(player_uuid)
+
+  case find_player {
+    Ok(player) -> {
+      let new_player =
+        update_player_after_progress_update(state, player, new_progress)
+      let new_dict =
+        state.player_progress
+        |> dict.insert(player.player_uuid, new_player)
+
+      lobby_models.LobbyState(..state, player_progress: new_dict)
+      |> update_game_state_after_progress_update(new_dict)
+    }
+    Error(e) -> {
+      io.debug("PLAYER NOT FOUND IN LOBBY PROGRESSION QUEUE")
+      state
+    }
+  }
+}
+
+fn update_game_state_after_progress_update(
+  state: lobby_models.LobbyState,
+  dict: dict.Dict(string, lobby_models.Player),
+) -> lobby_models.LobbyState {
+  let all_done =
+    dict
+    |> dict.fold(True, fn(accumulator, key, value) {
+      accumulator && value.progress == 100.0
+    })
+
+  case all_done {
+    True -> {
+      end_lobby(state)
+    }
+    False -> {
+      state
+    }
+  }
+}
+
+// TODO
+fn end_lobby(state) {
+  state
+}
+
+fn update_player_after_progress_update(
+  state: lobby_models.LobbyState,
+  player: lobby_models.Player,
+  new_progress: Float,
+) -> lobby_models.Player {
+  case new_progress {
+    100.0 -> {
+      let play_time = case state.start_time {
+        Some(time) -> {
+          birl.difference(birl.utc_now(), time)
+        }
+        None -> {
+          io.debug("NO START TIME FOUND.. DISASTER")
+          duration.milli_seconds(0)
+        }
+      }
+
+      io.debug(play_time)
+      lobby_models.Player(
+        ..player,
+        progress: new_progress,
+        play_time: Some(play_time),
+      )
+    }
+    _ -> {
+      lobby_models.Player(..player, progress: new_progress)
     }
   }
 }
