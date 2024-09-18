@@ -1,7 +1,7 @@
 import birl/duration
 
 // Responses
-pub const join_response_type = "join"
+pub const join_response_type = "start"
 
 pub const max_player_limit = 6
 
