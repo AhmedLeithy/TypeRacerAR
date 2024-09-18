@@ -26,16 +26,18 @@ pub fn lobby_handle_message(
 ) -> actor.Next(lobby_models.LobbyMsg, lobby_models.LobbyState) {
   case msg {
     lobby_models.LMovePlayer(player_uuid, new_progress) -> {
-      // let new_state_dict =
-      //   state.player_progress
-      //   |> dict.insert(player_name, new_progress)
-
-      // let new_state = LobbyState(..state, player_progress: new_state_dict)
-      // io.debug(new_state)
-
-      // CHECK CURRENT GAME STATE
-      move_player_and_update_state(state, player_uuid, new_progress)
-      |> actor.continue()
+      case state.status {
+        Running -> {
+          io.debug("Move status")
+          // CHECK CURRENT GAME STATE
+          move_player_and_update_state(state, player_uuid, new_progress)
+          |> actor.continue()
+        }
+        _ -> {
+          io.debug("WHY YOU SEND MOVE COMMAND WITH LOBBY FINISHED")
+          actor.continue(state)
+        }
+      }
     }
     lobby_models.LGetResult -> {
       case state.status {
@@ -235,7 +237,10 @@ pub fn send_updates(state: lobby_models.LobbyState) {
     let conn = player.connection
     process.send(
       player.ws_subject,
-      lobby_models.MessageToClient(player.connection, "updates_lol"),
+      lobby_models.MessageToClient(
+        player.connection,
+        serialization.seriailize_game_state(state, player_uuid),
+      ),
     )
     // process.send(
     //   state.main_thread_subject,
@@ -254,15 +259,10 @@ fn send_start_game_message(state: lobby_models.LobbyState) {
   state.player_progress
   |> dict.each(fn(player_uuid, player) {
     let conn = player.connection
-    io.debug("DESERIALIZING UPDATES NOT COMPLETE")
     process.send(
       player.ws_subject,
       lobby_models.MessageToClient(player.connection, gen),
     )
-    // process.send(
-    //   state.main_thread_subject,
-    //   lobby_models.MessageToClient(conn, gen),
-    // )
   })
   state
 }
@@ -330,7 +330,7 @@ fn update_game_state_after_progress_update(
   }
 }
 
-//TODO
+// TODO
 fn end_lobby(state) {
   state
 }

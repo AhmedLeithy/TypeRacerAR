@@ -43,8 +43,8 @@ pub fn on_init_with_orch(
       |> process.selecting(
         ws_subject,
         fn(message_to_client: lobby_models.MessageToClient) {
-          io.debug("HEEEElp")
-          io.debug(message_to_client)
+          io.debug("Sending this to client " <> message_to_client.message)
+          message_to_client
         },
       )
     #(
@@ -53,23 +53,6 @@ pub fn on_init_with_orch(
     )
   }
 }
-
-// pub fn on_init(
-//   connection: mist.WebsocketConnection,
-// ) -> #(
-//   SocketState,
-//   option.Option(process.Selector(lobby_models.MessageToClient)),
-// ) {
-//   let gen = random.int(0, 10_000_000_000)
-//   let ws_subject = process.new_subject()
-//   let new_lobby = lobby.create_new_empty_lobby(gen, ws_subject)
-//   let selector = process.new_selector()
-
-//   #(
-//     SocketState(my_lobby_orchestrator_actor, "", "", gen),
-//     option.Some(selector),
-//   )
-// }
 
 pub fn handle_ws_message(state: SocketState, conn, message) {
   case message {
@@ -103,7 +86,6 @@ pub fn handle_ws_message(state: SocketState, conn, message) {
                 )
               io.debug(new_player)
               let lo_actor_message = lobby_models.LOJoinLobbyRequest(new_player)
-
               process.send(state.lobby_orchestrator_actor, lo_actor_message)
 
               let new_state =
@@ -115,21 +97,16 @@ pub fn handle_ws_message(state: SocketState, conn, message) {
 
               let assert Ok(_) =
                 mist.send_text_frame(conn, player_uuid_resolved)
-
               actor.continue(new_state)
             }
             MovePlayer(progress) -> {
+              process.send(
+                state.lobby_orchestrator_actor,
+                lobby_models.LOMovePlayer(state.player_id, progress),
+              )
               io.debug(state)
-              //   process.send(state.lobby_orchestrator_actor, message_command)
 
-              //   //TODO
-              //   let assert Ok(_) =
-              //     mist.send_text_frame(conn, "New Table of Positions")
-              //   let lobby_state =
-              //     process.call(state.lobby_orchestrator_actor, GetResult, 100)
-              //   //   let dict_str = dict_to_string(lobby_state.player_progress)
               actor.continue(state)
-              //   //   let assert Ok(_) = mist.send_text_frame(conn, dict_str)
             }
           }
         }
@@ -140,7 +117,6 @@ pub fn handle_ws_message(state: SocketState, conn, message) {
       }
     }
     mist.Custom(lobby_models.MessageToClient(conn, message_string)) -> {
-      io.debug("mist custom")
       mist.send_text_frame(conn, message_string)
       actor.continue(state)
     }
@@ -150,11 +126,6 @@ pub fn handle_ws_message(state: SocketState, conn, message) {
       actor.continue(state)
     }
   }
-}
-
-pub fn send_socket_test(conn: mist.WebsocketConnection) -> Int {
-  mist.send_text_frame(conn, "woohoo")
-  1
 }
 
 pub fn get_player_id(

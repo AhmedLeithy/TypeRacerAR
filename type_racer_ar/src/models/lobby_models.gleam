@@ -68,12 +68,3 @@ pub type Player {
     play_time: Option(Duration),
   )
 }
-
-pub type PlayerResponse {
-  PlayerResponse(
-    player_name: String,
-    player_uuid: String,
-    car_id: Int,
-    connection: WebsocketConnection,
-  )
-}

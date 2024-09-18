@@ -1,9 +1,13 @@
+import birl/duration
 import decode
 import gleam/dict
 import gleam/dynamic.{type Dynamic, field, float, int, string}
 import gleam/io
 import gleam/json.{type DecodeError, UnexpectedSequence, object}
+import gleam/list
+import gleam/option
 import models/lobby_models
+import records/game
 
 pub type ClientMessage {
   ClientMessage(type_: String, obj: String)
@@ -80,4 +84,60 @@ pub fn serialize(type_string: String, json: json.Json) -> String {
   let obj_to_serialize =
     object([#("type", json.string(type_string)), #("obj", json)])
   json.to_string(obj_to_serialize)
+}
+
+pub fn seriailize_game_state(
+  lobby_state: lobby_models.LobbyState,
+  player_id: String,
+) -> String {
+  let state_obj =
+    object([
+      #("player_uuid", json.string(player_id)),
+      #("status", json.string(gamestatus_to_string(lobby_state.status))),
+      #("player_progress", serialize_players(lobby_state.player_progress)),
+    ])
+  serialize("state", state_obj)
+}
+
+pub fn serialize_players(
+  player_dict: dict.Dict(String, lobby_models.Player),
+) -> json.Json {
+  player_dict
+  |> dict.values()
+  |> list.map(fn(player) { serialize_player(player) })
+  |> json.array(of: fn(a) { a })
+}
+
+pub fn serialize_player(player: lobby_models.Player) -> json.Json {
+  case player.play_time {
+    option.Some(duration) -> {
+      object([
+        #("player_uuid", json.string(player.player_uuid)),
+        #("player_name", json.string(player.player_name)),
+        #("car_id", json.int(player.car_id)),
+        #("progress", json.float(player.progress)),
+        #(
+          "play_time",
+          json.int(duration.blur_to(duration, duration.MilliSecond)),
+        ),
+      ])
+    }
+    option.None -> {
+      object([
+        #("player_uuid", json.string(player.player_uuid)),
+        #("player_name", json.string(player.player_name)),
+        #("car_id", json.int(player.car_id)),
+        #("progress", json.float(player.progress)),
+        #("play_time", json.float(0.0)),
+      ])
+    }
+  }
+}
+
+pub fn gamestatus_to_string(game_status: game.GameStatus) -> String {
+  case game_status {
+    game.Pending -> "pending"
+    game.Running -> "running"
+    game.Finished -> "finished"
+  }
 }
