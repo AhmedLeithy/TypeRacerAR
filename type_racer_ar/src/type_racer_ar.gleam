@@ -62,7 +62,8 @@ pub fn main() {
     }
     |> mist.new
     |> mist.port(3000)
-    |> mist.start_http_server
+    // |> mist.start_https_server("cert.pem", "key.pem")
+    |> mist.start_http
   timer_execution_loop(my_lobby_orchestrator_actor, main_process_subject)
   // process.sleep_forever()
 }

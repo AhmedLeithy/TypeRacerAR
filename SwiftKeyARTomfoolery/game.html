@@ -4,8 +4,6 @@
 		<meta charset="UTF-8">
 		<title>AR Tomfoolery</title>
 		<script src="./static/js/aframe.min.js"></script>
-		<script src="./static/js/enva.js"></script>
-		<script src="./static/js/enva.js.map"></script>
 		<script src="tomfoolery.js"></script>
 		<link rel="stylesheet" href="overlaystyle.css">
 	</head>
@@ -18,11 +16,9 @@
 		</div>
 		<a-scene
 				webxr="requiredFeatures:hit-test,local-floor;overlayElement:#overlay; optionalFeatures:depth-sensing;"
-				background="color:white;"
 				reflection="directionalLight:#dirLight;"
 				shadow="type: pcfsoft"
-				renderer="logarithmicDepthBuffer: true;"
-				xr-mode-ui="XRMode: ar">
+				renderer="logarithmicDepthBuffer: true;">
 				<a-assets>
 					<img id="disconnect" src="static/img/disconnect.png">
 					<a-asset-item id="trophy" src="static/models/trophy/scene.gltf"></a-asset-item>
@@ -35,12 +31,13 @@
 					<a-asset-item id="ferrari_br20" src="static/models/ferrari_br20/scene.gltf"></a-asset-item>
 				</a-assets>
 
-				<a-light type="hemisphere" color="cyan" intensity="1"></a-light>
-				<a-light id="dirlight" intensity="0.1" type="directional" light="castShadow:true;" position="-1 1 1"></a-light>
+				<a-light type="hemisphere" color="cyan" intensity="10"></a-light>
+				<a-light type="ambient" intensity="10"></a-light>
+				<a-light id="dirlight" intensity="10" type="directional" light="castShadow:true;" position="0 1 1"></a-light>
 
 				<a-text id="word" value="Hello" align="center" color="blue" position="0 5 0"></a-text>
 
-				<a-entity id="target" scale="0.15 0.15 0.15" position="0 -2 -0.5" visible="false">
+				<a-entity id="target" scale="0.5 0.5 0.5" position="0 0 -5" rotation="0 180 0">
 					<a-gltf-model id="finish" src="#trophy" shadow position="2.25 0 20" scale="5 5 5" 
 					animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear" depth
 						></a-gltf-model>

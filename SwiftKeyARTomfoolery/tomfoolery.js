@@ -1,9 +1,3 @@
-window.onload = function() {
-	const wss = new WebSocket('https://clever-bushes-speak.loca.lt/ws');
-	wss.addEventListener('open', function() {
-		console.log('Connected to server');
-		});
-};
 // stoic quotes
 const words = ["The best revenge is not to be like your enemy", "Be tolerant with others and strict with yourself", "The key is to keep company only with people who uplift you, whose presence calls forth your best", "The happiness of your life depends upon the quality of your thoughts", "The soul becomes dyed with the color of its thoughts", "The impediment to action advances action. What stands in the way becomes the way", "The best revenge is not to be like your enemy", "The best revenge is massive success"]
 
@@ -12,6 +6,62 @@ let progress = 0;
 let player_id = null;
 var ws;
 let cars = ['ferrari_roma', 'chevrolet_camaro', 'audi_rs7', 'tesla_cybertruck', 'mazda_rx7', 'ferrari_br20'];
+
+window.onload = function() {
+	const isdebug = window.location.href.includes("isdebug");
+	if (!isdebug) {
+		return;
+	}
+	const scene = document.querySelector('a-scene');
+	const target = scene.querySelector('#target');
+	target.setAttribute('scale', '0.5 0.5 0.5');
+	target.setAttribute('position', '0 0 -5');
+	target.setAttribute('rotation', '0 180 0');
+	target.setAttribute('visible', true);
+	donePlacing = true;
+
+	// get current car id
+	const searchParams = new URLSearchParams(window.location.search);
+	const car = searchParams.get('car');
+	const carId = cars.indexOf(car);
+
+	if (!ws || ws.readyState !== ws.OPEN) {
+		ws = initWS();
+	}
+
+	// send join message
+	ws.addEventListener('open', () => {
+		console.log('opened connection!');
+		let joinMsg = {
+			type: 'join',
+			obj: JSON.stringify({
+				player_name: 'Alpha',
+				player_uuid: '',
+				car_id: carId
+			})
+		};
+		ws.send(JSON.stringify(joinMsg));
+	});
+	ws.addEventListener('message', (event) => {
+		console.log('received msg', event.data);
+		let msg = JSON.parse(event.data);
+		if (msg.type === 'state') {
+			let state = msg.obj;
+			player_id = state.player_uuid;
+			let player_list = state.player_progress.map((player) => {
+				return {
+					id: player.player_uuid,
+					car: player.car_id,
+					progress: player.progress
+				};
+			});
+			addOrUpdatePlayers(player_list);
+			return;
+		}
+	});
+
+	return;
+}
 
 AFRAME.registerComponent('hit-test', {
 	init: function() {
@@ -393,5 +443,5 @@ AFRAME.registerComponent('mesh-opacity', {
 });
 
 function initWS() {
-	return new WebSocket('http://192.178.1.8:3000/ws');
+	return new WebSocket('http://localhost:3000/ws');
 }
