@@ -103,10 +103,11 @@ pub fn add_player(
 
           io.debug("new __ STATE -> ")
           io.debug(new_state)
+          send_updates(new_state)
 
           // Check if should start
           let final_state =
-            check_if_should_add_player_and_run(
+            check_if_should_run_after_adding_player(
               new_state,
               client,
               lobby_models.Success,
@@ -182,7 +183,7 @@ pub fn check_if_time_to_run(
 }
 
 // FUNCTION MUST UPDATE THE CLIENT
-pub fn check_if_should_add_player_and_run(
+pub fn check_if_should_run_after_adding_player(
   state: lobby_models.LobbyState,
   client: Subject(lobby_models.LobbyAddPlayerResult),
   default_add_player_result: lobby_models.LobbyAddPlayerResult,
@@ -330,10 +331,13 @@ fn update_game_state_after_progress_update(
   }
 }
 
-// TODO
 fn end_lobby(state) {
   let end_state = lobby_models.LobbyState(..state, status: game.Finished)
   send_updates(end_state)
+
+  // write to database 
+  // ye2fel connections
+
   end_state
 }
 
