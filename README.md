@@ -20,6 +20,12 @@ TODO
 1. install gleam, erlang and rebar3.
 2. navigate to gleam directory and run `gleam run`
 
+### Docker
+
+1. docker build  "C:\repo\TypeRacerAR\type_racer_ar" -t type_racer_ar_image
+2. docker login typeraceracr.azurecr.io
+3. docker tag  type_racer_ar_image typeraceracr.azurecr.io/type_racer
+4. docker push typeraceracr.azurecr.io/type_racer
 
 Client Requests
 
