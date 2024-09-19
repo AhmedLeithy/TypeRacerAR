@@ -21,20 +21,7 @@ pub fn lobby_orchestrator_handle_message(
   lobby_models.LobbyOrchestratorState,
 ) {
   // Check on waiting Lobby
-  let subject = process.new_subject()
-  let status =
-    process.call(
-      state.waiting_lobby.actor,
-      lobby_models.LGetStatusInternal,
-      100,
-    )
-  let state = case status {
-    game.Pending -> state
-    _ -> {
-      io.debug("started waiting lobby")
-      start_waiting_lobby(state)
-    }
-  }
+  let state = check_on_waiting_lobby(state)
 
   // process message
   case lobby_orchestrator_msg {
@@ -129,6 +116,23 @@ pub fn lobby_orchestrator_handle_message(
         }
       }
       |> actor.continue()
+    }
+  }
+}
+
+fn check_on_waiting_lobby(state: lobby_models.LobbyOrchestratorState) {
+  let subject = process.new_subject()
+  let status =
+    process.call(
+      state.waiting_lobby.actor,
+      lobby_models.LGetStatusInternal,
+      100,
+    )
+  let state = case status {
+    game.Pending -> state
+    _ -> {
+      io.debug("started waiting lobby")
+      start_waiting_lobby(state)
     }
   }
 }

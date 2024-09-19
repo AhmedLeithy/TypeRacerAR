@@ -109,8 +109,8 @@ pub fn lobby_handle_message(
               Nil
             }
           }
-
-          actor.continue(new_state)
+          check_if_should_end_game(new_state)
+          |> actor.continue()
         }
       }
     }
@@ -356,7 +356,7 @@ fn move_player_and_update_state(
         |> dict.insert(player.player_uuid, new_player)
 
       lobby_models.LobbyState(..state, player_progress: new_dict)
-      |> update_game_state_after_progress_update(new_dict)
+      |> check_if_should_end_game()
     }
     Error(e) -> {
       io.debug("PLAYER NOT FOUND IN LOBBY PROGRESSION QUEUE")
@@ -365,12 +365,11 @@ fn move_player_and_update_state(
   }
 }
 
-fn update_game_state_after_progress_update(
+fn check_if_should_end_game(
   state: lobby_models.LobbyState,
-  dict: dict.Dict(string, lobby_models.Player),
 ) -> lobby_models.LobbyState {
   let all_done =
-    dict
+    state.player_progress
     |> dict.fold(True, fn(accumulator, key, value) {
       accumulator && value.progress == 100.0
     })
@@ -390,8 +389,6 @@ fn end_lobby(state) {
   send_updates(end_state)
 
   // write to database 
-  // ye2fel connections
-
   end_state
 }
 
