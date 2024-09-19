@@ -62,6 +62,62 @@ pub fn lobby_handle_message(
       io.debug(new_state)
       actor.continue(new_state)
     }
+    lobby_models.LRemovePlayer(player_uuid, client) -> {
+      // Remove player from progress dict
+      let new_dict =
+        state.player_progress
+        |> dict.delete(player_uuid)
+
+      let player_count =
+        new_dict
+        |> dict.size()
+
+      let new_state =
+        lobby_models.LobbyState(..state, player_progress: new_dict)
+
+      case player_count {
+        0 -> {
+          case new_state.status {
+            Pending -> {
+              io.debug("REMOVED LOBBY TO EMPTY BUT DIDNT KILL CUZ PENDING")
+              process.send(client, lobby_models.RemovedPlayer)
+              actor.continue(
+                lobby_models.LobbyState(
+                  ..new_state,
+                  start_waiting_time: None,
+                  start_time: None,
+                ),
+              )
+            }
+            _ -> {
+              io.debug("REMOVED LOBBY TO EMPTY AND KILLED LOBBY")
+              process.send(client, lobby_models.RemovedPlayerAndKilledLobby)
+              actor.Stop(process.Normal)
+            }
+          }
+        }
+        _ -> {
+          io.debug(
+            "REMOVED LOBBY TO EMPTY AND DIDNT KILL BECAUSE OTHER PLAYERS EXIST",
+          )
+          process.send(client, lobby_models.RemovedPlayer)
+          case new_state.status {
+            Pending -> {
+              send_updates(new_state)
+            }
+            _ -> {
+              Nil
+            }
+          }
+
+          actor.continue(new_state)
+        }
+      }
+    }
+    lobby_models.LGetStatusInternal(client) -> {
+      process.send(client, state.status)
+      actor.continue(state)
+    }
   }
 }
 
@@ -146,7 +202,6 @@ pub fn check_if_time_to_run(
   optional_client: option.Option(Subject(lobby_models.LobbyAddPlayerResult)),
   default_add_player_result,
 ) -> lobby_models.LobbyState {
-  io.debug("checking if time to run")
   // check time
   case state.start_waiting_time {
     Some(time_value) -> {
@@ -172,7 +227,6 @@ pub fn check_if_time_to_run(
       }
     }
     None -> {
-      io.debug("ERROR!! NO START TIME SET")
       case optional_client {
         Some(client) -> process.send(client, default_add_player_result)
         None -> Nil

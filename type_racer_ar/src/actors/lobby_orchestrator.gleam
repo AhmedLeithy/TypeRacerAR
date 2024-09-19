@@ -10,6 +10,7 @@ import gleam/otp/actor
 import mist.{type WebsocketConnection}
 import models/lobby_models
 import prng/random
+import records/game
 
 // Handle messages
 pub fn lobby_orchestrator_handle_message(
@@ -19,6 +20,23 @@ pub fn lobby_orchestrator_handle_message(
   lobby_models.LobbyOrchestratorMsg,
   lobby_models.LobbyOrchestratorState,
 ) {
+  // Check on waiting Lobby
+  let subject = process.new_subject()
+  let status =
+    process.call(
+      state.waiting_lobby.actor,
+      lobby_models.LGetStatusInternal,
+      100,
+    )
+  let state = case status {
+    game.Pending -> state
+    _ -> {
+      io.debug("started waiting lobby")
+      start_waiting_lobby(state)
+    }
+  }
+
+  // process message
   case lobby_orchestrator_msg {
     lobby_models.LOJoinLobbyRequest(player) -> {
       let new_state = add_waiting_user(player, state)
@@ -51,6 +69,67 @@ pub fn lobby_orchestrator_handle_message(
       list.each(state.active_lobbies, fn(lby) { send_lobby_status_request(lby) })
       actor.continue(state)
     }
+    lobby_models.LORemovePlayer(player_uuid) -> {
+      let lobby_result =
+        state.player_to_lobby
+        |> dict.get(player_uuid)
+
+      case lobby_result {
+        Ok(lobby) -> {
+          let subject = process.new_subject()
+          let remove_player_from_lobby =
+            lobby_models.LRemovePlayer(player_uuid, subject)
+          let remove_player =
+            process.send(lobby.actor, remove_player_from_lobby)
+
+          let new_dict =
+            state.player_to_lobby
+            |> dict.delete(player_uuid)
+          let remove_player_result = process.receive(subject, 200)
+
+          case remove_player_result {
+            Ok(ok_add_player_result) -> {
+              case ok_add_player_result {
+                lobby_models.RemovedPlayer -> {
+                  lobby_models.LobbyOrchestratorState(
+                    ..state,
+                    player_to_lobby: new_dict,
+                  )
+                }
+                lobby_models.RemovedPlayerAndKilledLobby -> {
+                  let new_active_list =
+                    state.active_lobbies
+                    |> list.filter(fn(lobby_it) {
+                      lobby.lobby_id != lobby_it.lobby_id
+                    })
+
+                  io.debug("LO: REMOVING LOBBY")
+                  io.debug(state.active_lobbies)
+                  io.debug(new_active_list)
+                  lobby_models.LobbyOrchestratorState(
+                    ..state,
+                    player_to_lobby: new_dict,
+                    active_lobbies: new_active_list,
+                  )
+                }
+              }
+            }
+            Error(_) -> {
+              io.debug("WARNING: REMOVING PLAYER FROM LOBBY FAILED")
+              lobby_models.LobbyOrchestratorState(
+                ..state,
+                player_to_lobby: new_dict,
+              )
+            }
+          }
+        }
+        Error(_) -> {
+          io.debug("ERROR: REMOVING PLAYER THAT DOESNT EXIST IN LOBBIES")
+          state
+        }
+      }
+      |> actor.continue()
+    }
   }
 }
 
@@ -69,7 +148,7 @@ fn add_waiting_user(
       state.waiting_lobby.actor,
       lobby_models.LAddPlayer(player, subject),
     )
-  let add_player_result = process.receive(subject, within: 100)
+  let add_player_result = process.receive(subject, within: 200)
   let new_state = case add_player_result {
     Ok(add_player_result_ok) -> {
       case add_player_result_ok {

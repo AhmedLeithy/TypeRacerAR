@@ -16,6 +16,8 @@ pub type LobbyMsg {
   LMovePlayer(String, Float)
   LGetResult
   LAddPlayer(Player, client: Subject(LobbyAddPlayerResult))
+  LRemovePlayer(player_uuid: String, client: Subject(RemovePlayerResult))
+  LGetStatusInternal(client: Subject(game.GameStatus))
 }
 
 // Define the actor's state
@@ -26,6 +28,11 @@ pub type LobbyState {
     start_time: Option(birl.Time),
     player_progress: dict.Dict(String, Player),
   )
+}
+
+pub type RemovePlayerResult {
+  RemovedPlayer
+  RemovedPlayerAndKilledLobby
 }
 
 pub type LobbyAddPlayerResult {
@@ -41,6 +48,7 @@ pub type LobbyOrchestratorMsg {
   LOJoinLobbyRequest(player: Player)
   LOMovePlayer(player_uuid: String, player_progress: Float)
   LOGetResult
+  LORemovePlayer(player_uuid: String)
 }
 
 // Define the actor's state

@@ -17,7 +17,9 @@ import gleam/otp/actor
 import mist.{type Connection, type ResponseData}
 import models/lobby_models
 import prng/random
-import socket/socket_handler.{SocketState, handle_ws_message, on_init_with_orch}
+import socket/socket_handler.{
+  SocketState, handle_ws_message, on_close, on_init_with_orch,
+}
 
 pub fn main() {
   let main_process_subject = process.new_subject()
@@ -52,7 +54,7 @@ pub fn main() {
           mist.websocket(
             request: req,
             on_init: on_init_with_orch(my_lobby_orchestrator_actor),
-            on_close: fn(_state) { io.println("goodbye!") },
+            on_close: on_close,
             handler: handle_ws_message,
           )
         _ -> not_found

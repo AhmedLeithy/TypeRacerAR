@@ -126,6 +126,13 @@ pub fn handle_ws_message(state: SocketState, conn, message) {
   }
 }
 
+pub fn on_close(state: SocketState) -> Nil {
+  process.send(
+    state.lobby_orchestrator_actor,
+    lobby_models.LORemovePlayer(state.player_id),
+  )
+}
+
 pub fn get_player_id(
   player_uuid: String,
   player_name: String,
