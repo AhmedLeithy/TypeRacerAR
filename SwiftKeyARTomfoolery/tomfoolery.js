@@ -1,5 +1,5 @@
 // stoic quotes
-const words = ["The best revenge is not to be like your enemy", "Be tolerant with others and strict with yourself", "The key is to keep company only with people who uplift you, whose presence calls forth your best", "The happiness of your life depends upon the quality of your thoughts", "The soul becomes dyed with the color of its thoughts", "The impediment to action advances action. What stands in the way becomes the way", "The best revenge is not to be like your enemy", "The best revenge is massive success"]
+let words = ["The best revenge is not to be like your enemy", "Be tolerant with others and strict with yourself", "The key is to keep company only with people who uplift you, whose presence calls forth your best", "The happiness of your life depends upon the quality of your thoughts", "The soul becomes dyed with the color of its thoughts", "The impediment to action advances action. What stands in the way becomes the way", "The best revenge is not to be like your enemy", "The best revenge is massive success"]
 
 let donePlacing = false;
 let progress = 0;
@@ -56,6 +56,11 @@ window.onload = function() {
 				};
 			});
 			addOrUpdatePlayers(player_list);
+			return;
+		}
+		if (msg.type === 'start') {
+			words = msg.obj;
+			startGame();
 			return;
 		}
 	});
@@ -262,6 +267,9 @@ function addOrUpdatePlayers(player_list) {
 	currentPlayers.forEach((player) => {
 		let playerObj = player_list.find((p) => p.id === player.getAttribute('id'));
 		let playerProgress = playerObj.progress;
+		if (playerProgress === 100) {
+			return;
+		}
 		let playerPosition = player.getAttribute('position');
 		let start = target.getAttribute('position');
 		let finish = document.getElementById('finish').getAttribute('position');
@@ -325,6 +333,13 @@ function startGame() {
 
 	changeWord();
 
+	if (window.location.href.includes("isdebug")) {
+		setInterval(() => {
+			updateProgress();
+			changeWord();
+		}, rand(3000, 5000));
+	}
+
 	input.addEventListener('input', function() {
 		let wordEl = document.getElementById('word');
 		let word = wordEl.getAttribute('value').toLowerCase();
@@ -357,7 +372,7 @@ function changeWord() {
 	const randZ = rand(3, 5);
 	const randY = rand(1, 2);
 	const randX = rand(0, 1);
-	const randPozNeg = rand(0, 1) === 0 ? -1 : 1;
+	const randPozNeg = Math.random() < 0.5 ? -1 : 1;
 	wordEl.getAttribute('position').z = -randZ;
 	wordEl.getAttribute('position').y = randY;
 	wordEl.getAttribute('position').x = randX * randPozNeg;
@@ -369,21 +384,29 @@ function rand(min, max) {
 }
 
 function updateProgress() {
+	if(progress >= 100) {
+		return;
+	}
 	progress += 10;
-	let player = document.getElementById('player');
-	let playerPosition = player.getAttribute('position');
-	let start = document.getElementById('target');
-	let finish = document.getElementById('finish');
-	let totalDistance = start.object3D.position.distanceTo(finish.object3D.position);
-	let progressInMeters = (progress * totalDistance) / 100;
-	let targetPosition = `${playerPosition.x} ${playerPosition.y} ${progressInMeters}`;
-
-	player.setAttribute('animation', {
-		property: 'position',
-		to: targetPosition,
-		dur: 1000,
-		easing: 'easeInOutQuad'
-	});
+	let wsMsg = {
+		type: "progress",
+		obj: JSON.stringify({progress: progress})
+	};
+	ws.send(JSON.stringify(wsMsg));
+	// let player = document.getElementById('player');
+	// let playerPosition = player.getAttribute('position');
+	// let start = document.getElementById('target');
+	// let finish = document.getElementById('finish');
+	// let totalDistance = start.object3D.position.distanceTo(finish.object3D.position);
+	// let progressInMeters = (progress * totalDistance) / 100;
+	// let targetPosition = `${playerPosition.x} ${playerPosition.y} ${progressInMeters}`;
+	//
+	// player.setAttribute('animation', {
+	// 	property: 'position',
+	// 	to: targetPosition,
+	// 	dur: 1000,
+	// 	easing: 'easeInOutQuad'
+	// });
 }
 
 AFRAME.registerComponent('car-select', {
