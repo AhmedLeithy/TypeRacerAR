@@ -1,3 +1,4 @@
+import birl
 import birl/duration
 import decode
 import gleam/dict
@@ -9,6 +10,7 @@ import gleam/list
 import gleam/option
 import models/lobby_models
 import records/game
+import utils/constants
 
 pub type ClientMessage {
   ClientMessage(type_: String, obj: String)
@@ -114,10 +116,20 @@ pub fn seriailize_game_state(
   lobby_state: lobby_models.LobbyState,
   player_id: String,
 ) -> String {
+  let time_string = case lobby_state.start_waiting_time {
+    option.Some(start_wait_time) -> {
+      birl.to_iso8601(birl.add(start_wait_time, constants.max_wait_duration))
+    }
+    option.None -> {
+      io.debug("missing start time for state serialize")
+      birl.to_iso8601(birl.utc_now())
+    }
+  }
   let state_obj =
     object([
       #("player_uuid", json.string(player_id)),
       #("status", json.string(gamestatus_to_string(lobby_state.status))),
+      #("start_time", json.string(time_string)),
       #("player_progress", serialize_players(lobby_state.player_progress)),
     ])
   serialize("state", state_obj)

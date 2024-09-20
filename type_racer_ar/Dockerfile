@@ -9,6 +9,8 @@ RUN cd /build \
   && mv build/erlang-shipment /app \
   && rm -r /build
 
+EXPOSE 3000
+
 # Run the server
 WORKDIR /app
 ENTRYPOINT ["/app/entrypoint.sh"]
