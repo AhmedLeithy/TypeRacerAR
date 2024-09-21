@@ -452,10 +452,6 @@ function updateProgress() {
 AFRAME.registerComponent('car-select', {
 	init: function() {
 		const cars = this.el.querySelectorAll('a-gltf-model');
-		const overlayBtn = document.getElementById('overlay-btn');
-		overlayBtn.addEventListener('click', function() {
-			overlayBtn.innerHTML = "Type the word you see.";
-		});
 		const textEl = this.el.querySelector('#text_select');
 		const carNameEl = this.el.querySelector('#car_name');
 		const play_triangle = textEl.querySelector('a-triangle');
