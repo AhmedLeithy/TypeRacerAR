@@ -15,12 +15,14 @@
 			</div>
 		</div>
 		<a-scene
-				webxr="requiredFeatures:hit-test,local-floor;overlayElement:#overlay; optionalFeatures:depth-sensing;"
+				xr-mode-ui="XRMode: ar"
+				webxr="requiredFeatures:hit-test,local-floor;overlayElement:#overlay;"
 				reflection="directionalLight:#dirLight;"
 				shadow="type: pcfsoft"
 				renderer="logarithmicDepthBuffer: true;">
 				<a-assets>
 					<img id="disconnect" src="static/img/disconnect.png">
+					<a-asset-item id="star" src="static/models/star/star.gltf"></a-asset-item>
 					<a-asset-item id="trophy" src="static/models/trophy/scene.gltf"></a-asset-item>
 					<a-asset-item id="reticle" src="reticle.gltf" responseType="arraybuffer"></a-asset-item>
 					<a-asset-item id="ferrari_roma" src="static/models/ferrari_roma/scene.gltf"></a-asset-item>
@@ -31,16 +33,18 @@
 					<a-asset-item id="ferrari_br20" src="static/models/ferrari_br20/scene.gltf"></a-asset-item>
 				</a-assets>
 
-				<a-light type="hemisphere" color="cyan" intensity="10"></a-light>
-				<a-light type="ambient" intensity="10"></a-light>
-				<a-light id="dirlight" intensity="10" type="directional" light="castShadow:true;" position="0 1 1"></a-light>
+				<a-light type="hemisphere" color="cyan" intensity="0.5"></a-light>
+				<a-light id="dirlight" intensity="1" type="directional" light="castShadow:true;" position="-1 1 1"></a-light>
 
-				<a-text id="word" value="Hello" align="center" color="blue" position="0 5 0"></a-text>
+				<a-text id="word" value="Hello" align="center" color="blue" position="0 5 0" scale="0.8 0.8 0.8"></a-text>
 
-				<a-entity id="target" scale="0.5 0.5 0.5" position="0 0 -5" rotation="0 180 0">
-					<a-gltf-model id="finish" src="#trophy" shadow position="2.25 0 20" scale="5 5 5" 
-					animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear" depth
+				<a-entity id="target" scale="0.15 0.15 0.15" position="0 0 -5" rotation="0 0 0" visible="false">
+					<a-entity id="start"></a-entity>
+					<a-entity id="finish" position="2.25 0 20">
+					<a-gltf-model src="#trophy" shadow scale="5 5 5" position="0 0 0"
+					animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear"
 						></a-gltf-model>
+					</a-entity>
 					<a-entity id="track">
 						<a-entity line="start: -0.5 0 0; end: -0.5 0 20; color: white;"></a-entity>
 						<a-entity line="start: 5 0 0; end: 5 0 20; color: white;"></a-entity>

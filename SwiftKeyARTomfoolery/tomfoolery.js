@@ -1,13 +1,21 @@
 // stoic quotes
-let words = ["The best revenge is not to be like your enemy", "Be tolerant with others and strict with yourself", "The key is to keep company only with people who uplift you, whose presence calls forth your best", "The happiness of your life depends upon the quality of your thoughts", "The soul becomes dyed with the color of its thoughts", "The impediment to action advances action. What stands in the way becomes the way", "The best revenge is not to be like your enemy", "The best revenge is massive success"]
+let words = []
 
 let donePlacing = false;
 let progress = 0;
 let player_id = null;
+let game_state = 'pending';
+let start_time = null;
 var ws;
 let cars = ['ferrari_roma', 'chevrolet_camaro', 'audi_rs7', 'tesla_cybertruck', 'mazda_rx7', 'ferrari_br20'];
+let username = localStorage.getItem('username');
 
 window.onload = function() {
+	if (!username && window.location.href.includes("game.html")) {
+		username = prompt("Enter your username") || "Alpha";
+		localStorage.setItem('username', username);
+	}
+	// check if we're in debug mode
 	const isdebug = window.location.href.includes("isdebug");
 	if (!isdebug) {
 		return;
@@ -48,6 +56,21 @@ window.onload = function() {
 		if (msg.type === 'state') {
 			let state = msg.obj;
 			player_id = state.player_uuid;
+			if (!start_time && game_state === 'pending') {
+				start_time = new Date(msg.obj.start_time);
+				let countdown = setInterval(() => {
+					let now = new Date();
+					let timeDiff = start_time - now;
+					if (timeDiff <= 0 || game_state === 'started') {
+						clearInterval(countdown);
+						return;
+					}
+					let seconds = Math.floor((timeDiff / 1000) % 60);
+					let minutes = Math.floor((timeDiff / (1000 * 60)) % 60);
+
+					document.getElementById('overlay-msg').innerHTML = `Hello, ${username}. Starting in ${minutes}m ${seconds}s`;
+				}, 1000);
+			}
 			let player_list = state.player_progress.map((player) => {
 				return {
 					id: player.player_uuid,
@@ -60,6 +83,7 @@ window.onload = function() {
 		}
 		if (msg.type === 'start') {
 			words = msg.obj;
+			game_state = 'started';
 			startGame();
 			return;
 		}
@@ -133,6 +157,7 @@ AFRAME.registerComponent('hit-test', {
 
 					// send join message
 					ws.addEventListener('open', () => {
+						console.log('opened connection!');
 						let joinMsg = {
 							type: 'join',
 							obj: JSON.stringify({
@@ -144,10 +169,26 @@ AFRAME.registerComponent('hit-test', {
 						ws.send(JSON.stringify(joinMsg));
 					});
 					ws.addEventListener('message', (event) => {
+						console.log('received msg', event.data);
 						let msg = JSON.parse(event.data);
 						if (msg.type === 'state') {
-							let state = JSON.parse(msg.obj);
+							let state = msg.obj;
 							player_id = state.player_uuid;
+							if (!start_time && game_state === 'pending') {
+								start_time = new Date(msg.obj.start_time);
+								let countdown = setInterval(() => {
+									let now = new Date();
+									let timeDiff = start_time - now;
+									if (timeDiff <= 0 || game_state === 'started') {
+										clearInterval(countdown);
+										return;
+									}
+									let seconds = Math.floor((timeDiff / 1000) % 60);
+									let minutes = Math.floor((timeDiff / (1000 * 60)) % 60);
+
+									document.getElementById('overlay-msg').innerHTML = `Hello, ${username}. Starting in ${minutes}m ${seconds}s`;
+								}, 1000);
+							}
 							let player_list = state.player_progress.map((player) => {
 								return {
 									id: player.player_uuid,
@@ -158,33 +199,15 @@ AFRAME.registerComponent('hit-test', {
 							addOrUpdatePlayers(player_list);
 							return;
 						}
+						if (msg.type === 'start') {
+							words = msg.obj;
+							game_state = 'started';
+							startGame();
+							return;
+						}
 					});
 
 					return;
-					// simulate joining a game
-					player_id = "10";
-					let player_list = [
-						{ id: player_id, car: 0, progress: 0.0 },
-						{ id: 'player2', car: 1, progress: 0.0 },
-						{ id: 'player3', car: 2, progress: 0.0 },
-						{ id: 'player4', car: 3, progress: 0.0 },
-						{ id: 'player5', car: 4, progress: 0.0 },
-						{ id: 'player6', car: 5, progress: 0.0 }
-					];
-					addOrUpdatePlayers(player_list);
-
-					// simulate players disconnecting
-					setTimeout(() => {
-						player_list = player_list.slice(0, 4);
-						addOrUpdatePlayers(player_list);
-					}, 4000);
-
-					// simulate player progress update
-					setTimeout(() => {
-						player_list.forEach((player, i) => { player.progress = 10 * i });
-						addOrUpdatePlayers(player_list);
-					}, 8000);
-					// startGame();
 				});
 			});
 
@@ -266,16 +289,37 @@ function addOrUpdatePlayers(player_list) {
 	currentPlayers = target.querySelectorAll('.player');
 	currentPlayers.forEach((player) => {
 		let playerObj = player_list.find((p) => p.id === player.getAttribute('id'));
-		let playerProgress = playerObj.progress;
-		if (playerProgress === 100) {
+		if (player.getAttribute('progress') == playerObj.progress) {
 			return;
 		}
+		player.setAttribute('progress', playerObj.progress);
+
+		if (playerObj.progress >= 100) {
+			let starModel = document.createElement('a-gltf-model');
+			starModel.setAttribute('src', '#star');
+			starModel.setAttribute('scale', '0.3 0.3 0.3');
+			starModel.setAttribute('position', '0 2 0');
+			starModel.setAttribute('animation', {
+				property: 'rotation',
+				to: '0 360 0',
+				dur: 1000,
+				easing: 'easeInOutQuad',
+				loop: true
+			});
+			player.appendChild(starModel);
+		}
+
 		let playerPosition = player.getAttribute('position');
-		let start = target.getAttribute('position');
+		let start = target.querySelector('#start').getAttribute('position');
 		let finish = document.getElementById('finish').getAttribute('position');
-		let totalDistance = Math.abs(start.z - finish.z);
-		let progressInMeters = (playerProgress * totalDistance) / 100;
+		if (start.z >= finish.z) {
+			return;
+		}
+		let totalDistance = finish.z - start.z;
+		let progressInMeters = (playerObj.progress * totalDistance) / 100.0;
+		progressInMeters = Math.min(progressInMeters, finish.z - 2);
 		let targetPosition = `${playerPosition.x} ${playerPosition.y} ${progressInMeters}`;
+		console.log('target pos', targetPosition);
 
 		player.setAttribute('animation', {
 			property: 'position',
@@ -286,7 +330,6 @@ function addOrUpdatePlayers(player_list) {
 	});
 
 	let playersToAdd = player_list.filter((player) => !currentPlayerIds.includes(player.id));
-	document.querySelector('#overlay-msg').innerHTML = `Players: ${playersToAdd.map(p => p.id).join(', ')}`;
 
 	currentPlayers = target.querySelectorAll('.player');
 	let lastPlayerPosition = currentPlayers.length > 0
@@ -297,9 +340,9 @@ function addOrUpdatePlayers(player_list) {
 		let newPlayer = document.createElement('a-entity');
 		newPlayer.setAttribute('id', player.id);
 		newPlayer.setAttribute('class', 'player');
-		newPlayer.setAttribute('position', `${lastPlayerPosition.x + 0.8} 0 ${lastPlayerPosition.z}`);
+		newPlayer.setAttribute('position', `${lastPlayerPosition.x + 0.9} 0 ${lastPlayerPosition.z}`);
 		newPlayer.setAttribute('mesh-opacity', { opacity: 0.5 });
-		lastPlayerPosition.x += 0.8;
+		lastPlayerPosition.x += 0.9;
 
 		let gltf = document.createElement('a-gltf-model');
 		gltf.setAttribute('src', `#${cars[player.car]}`);
@@ -327,17 +370,21 @@ AFRAME.registerComponent('ar-shadows', {
 
 function startGame() {
 	let overlayMsg = document.getElementById('overlay-msg');
-	overlayMsg.innerHTML = "Type the word you see.";
+	overlayMsg.innerHTML = "Game started. Type the word you see.";
 
 	let input = document.getElementById('input');
 
 	changeWord();
 
 	if (window.location.href.includes("isdebug")) {
-		setInterval(() => {
+		const interval = setInterval(() => {
+			if (progress >= 100) {
+				clearInterval(interval);
+				return;
+			}
 			updateProgress();
 			changeWord();
-		}, rand(3000, 5000));
+		}, rand(3000, 4000));
 	}
 
 	input.addEventListener('input', function() {
@@ -357,15 +404,19 @@ function startGame() {
 }
 
 function changeWord() {
+	let wordEl = document.getElementById('word');
+	if (progress >= 100) {
+		wordEl.setAttribute('visible', false);
+		return;
+	}
+	let input = document.querySelector('#input');
 	input.style.display = 'block';
 	input.focus();
 
-	let wordEl = document.getElementById('word');
+	let word = words[0];
+	wordEl.setAttribute('value', word);
 
-	let randomWord = words[Math.floor(Math.random() * words.length)];
-	wordEl.setAttribute('value', randomWord);
-
-	let colors = ['blue', 'red', 'green', 'purple', 'orange', 'brown', 'black', 'white'];
+	let colors = ['blue', 'red', 'green', 'orange', 'white'];
 	let randomColor = colors[Math.floor(Math.random() * colors.length)];
 	wordEl.setAttribute('color', randomColor);
 
@@ -377,6 +428,8 @@ function changeWord() {
 	wordEl.getAttribute('position').y = randY;
 	wordEl.getAttribute('position').x = randX * randPozNeg;
 	wordEl.object3D.lookAt(document.querySelector('[camera]').object3D.position);
+
+	words = words.slice(1);
 }
 
 function rand(min, max) {
@@ -384,29 +437,16 @@ function rand(min, max) {
 }
 
 function updateProgress() {
-	if(progress >= 100) {
-		return;
-	}
 	progress += 10;
+	if (progress >= 100) {
+		document.querySelector('#input').style.display = 'none';
+		document.querySelector('#overlay-msg').innerHTML = "Finished! Refresh to enter a new race";
+	}
 	let wsMsg = {
 		type: "progress",
-		obj: JSON.stringify({progress: progress})
+		obj: JSON.stringify({ progress: progress })
 	};
 	ws.send(JSON.stringify(wsMsg));
-	// let player = document.getElementById('player');
-	// let playerPosition = player.getAttribute('position');
-	// let start = document.getElementById('target');
-	// let finish = document.getElementById('finish');
-	// let totalDistance = start.object3D.position.distanceTo(finish.object3D.position);
-	// let progressInMeters = (progress * totalDistance) / 100;
-	// let targetPosition = `${playerPosition.x} ${playerPosition.y} ${progressInMeters}`;
-	//
-	// player.setAttribute('animation', {
-	// 	property: 'position',
-	// 	to: targetPosition,
-	// 	dur: 1000,
-	// 	easing: 'easeInOutQuad'
-	// });
 }
 
 AFRAME.registerComponent('car-select', {
@@ -466,5 +506,5 @@ AFRAME.registerComponent('mesh-opacity', {
 });
 
 function initWS() {
-	return new WebSocket('http://localhost:3000/ws');
+	return new WebSocket('https://typeracerarbackend.azurewebsites.net/ws');
 }
