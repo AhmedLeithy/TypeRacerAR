@@ -6,7 +6,7 @@ pub const join_response_type = "start"
 pub const max_player_limit = 6
 
 // pub const max_duration = duration.Duration(60_000_000)
-pub const max_wait_duration = duration.Duration(200_000)
+pub const max_wait_duration = duration.Duration(20_000_000)
 
 pub const max_game_duration = duration.Duration(200_000)
 
@@ -48,6 +48,4 @@ pub const sentences = [
   "It is the power of the mind to be unconquerable.",
   "The best revenge is to be unlike him who performed the injury.",
   "The essence of philosophy is that a man should so live that his happiness shall depend as little as possible on external things.",
-  "The greater the difficulty, the more glory in surmounting it.",
-  "The best revenge is to be unlike him who performed the injury.",
 ]
