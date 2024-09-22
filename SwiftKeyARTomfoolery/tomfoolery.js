@@ -9,6 +9,7 @@ let start_time = null;
 var ws;
 let cars = ['ferrari_roma', 'chevrolet_camaro', 'audi_rs7', 'tesla_cybertruck', 'mazda_rx7', 'ferrari_br20'];
 let username = localStorage.getItem('username');
+let playerNames = [];
 
 window.onload = function() {
 	if (!username && window.location.href.includes("game.html")) {
@@ -79,6 +80,7 @@ window.onload = function() {
 					time_to_finish: player.play_time,
 				};
 			});
+			playerNames = player_list.map((player) => player.id.split('_')[0]);
 			addOrUpdatePlayers(player_list);
 			return;
 		}
@@ -373,7 +375,8 @@ AFRAME.registerComponent('ar-shadows', {
 
 function startGame() {
 	let overlayMsg = document.getElementById('overlay-msg');
-	overlayMsg.innerHTML = "Game started. Type the word you see.";
+	let playerNames = playerNames.join(', ');
+	overlayMsg.innerHTML = "Game started. Type the word you see. Players: " + playerNames;
 
 	let input = document.getElementById('input');
 
