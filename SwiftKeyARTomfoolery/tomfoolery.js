@@ -375,8 +375,8 @@ AFRAME.registerComponent('ar-shadows', {
 
 function startGame() {
 	let overlayMsg = document.getElementById('overlay-msg');
-	let playerNames = playerNames.join(', ');
-	overlayMsg.innerHTML = "Game started. Type the word you see. Players: " + playerNames;
+	let names = playerNames.join(', ');
+	overlayMsg.innerHTML = "Game started. Type the word you see. Players: " + names;
 
 	let input = document.getElementById('input');
 
