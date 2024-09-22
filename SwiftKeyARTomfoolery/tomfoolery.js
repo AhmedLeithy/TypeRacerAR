@@ -75,7 +75,8 @@ window.onload = function() {
 				return {
 					id: player.player_uuid,
 					car: player.car_id,
-					progress: player.progress
+					progress: player.progress,
+					time_to_finish: player.play_time,
 				};
 			});
 			addOrUpdatePlayers(player_list);
@@ -307,6 +308,7 @@ function addOrUpdatePlayers(player_list) {
 				loop: true
 			});
 			player.appendChild(starModel);
+			player.setAttribute('timeToFinish', playerObj.time_to_finish);
 		}
 
 		let playerPosition = player.getAttribute('position');
@@ -389,10 +391,10 @@ function startGame() {
 
 	input.addEventListener('input', function() {
 		let wordEl = document.getElementById('word');
-		let word = wordEl.getAttribute('value').toLowerCase();
+		let word = wordEl.getAttribute('value').toLowerCase().trim();
 		let inputVal = input.value;
 
-		if (inputVal.toLowerCase() === word) {
+		if (inputVal.toLowerCase().trim() === word) {
 			overlayMsg.innerHTML = "Correct!";
 			input.style.display = 'none';
 			input.value = '';
@@ -439,8 +441,16 @@ function rand(min, max) {
 function updateProgress() {
 	progress += 10;
 	if (progress >= 100) {
+		let timeTaken = new Date() - start_time;
+		let timeTakenInSeconds = Math.floor( (timeTaken / 1000) % 60);
+		let timeTakenInMinutes = Math.floor( (timeTaken / (1000 * 60)) % 60);
 		document.querySelector('#input').style.display = 'none';
-		document.querySelector('#overlay-msg').innerHTML = "Finished! Refresh to enter a new race";
+		document.querySelector('#overlay-msg').innerHTML = `Finished in ${timeTakenInMinutes}m ${timeTakenInSeconds}s`;
+		document.querySelector('#overlay-btn').style.display = 'block';
+		document.querySelector('#overlay-btn').innerHTML = "Play again";
+		document.querySelector('#overlay-btn').addEventListener('click', function() {
+			window.open('index.html', '_self');
+		});
 	}
 	let wsMsg = {
 		type: "progress",
