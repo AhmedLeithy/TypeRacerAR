@@ -425,7 +425,7 @@ function changeWord() {
 
 	let target = new THREE.Vector3();
 	document.getElementById('finish').object3D.getWorldPosition(target);
-	wordEl.setAttribute('position', `${target.x} ${target.y + 3} ${target.z}`);
+	wordEl.setAttribute('position', `${target.x} ${target.y + 1} ${target.z}`);
 	wordEl.object3D.lookAt(document.querySelector('[camera]').object3D.position);
 
 	words = words.slice(1);
