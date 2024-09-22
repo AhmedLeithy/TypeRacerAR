@@ -348,6 +348,7 @@ function addOrUpdatePlayers(player_list) {
 
 		let gltf = document.createElement('a-gltf-model');
 		gltf.setAttribute('src', `#${cars[player.car]}`);
+		gltf.setAttribute('shadow', "");
 		gltf.setAttribute('scale', '0.3 0.3 0.3');
 
 		newPlayer.appendChild(gltf);
@@ -422,13 +423,9 @@ function changeWord() {
 	let randomColor = colors[Math.floor(Math.random() * colors.length)];
 	wordEl.setAttribute('color', randomColor);
 
-	const randZ = rand(3, 5);
-	const randY = rand(1, 2);
-	const randX = rand(0, 1);
-	const randPozNeg = Math.random() < 0.5 ? -1 : 1;
-	wordEl.getAttribute('position').z = -randZ;
-	wordEl.getAttribute('position').y = randY;
-	wordEl.getAttribute('position').x = randX * randPozNeg;
+	let target = new THREE.Vector3();
+	document.getElementById('finish').object3D.getWorldPosition(target);
+	wordEl.setAttribute('position', `${target.x} ${target.y + 3} ${target.z}`);
 	wordEl.object3D.lookAt(document.querySelector('[camera]').object3D.position);
 
 	words = words.slice(1);
