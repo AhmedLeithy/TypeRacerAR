@@ -30,7 +30,7 @@ pub const sentences = [
   "Be thankful for each moment", "Gratitude brings joy",
   "Cherish the good in life", "Thankfulness is the beginning of happiness",
   "Gratitude unlocks the fullness of life", "Be present in the moment",
-  "Observe without judgment", "Breathe deeply and calmly",
+  "Observe without judgement", "Breathe deeply and calmly",
   "Embrace the here and now", "Find peace in stillness", "Cultivate awareness",
   "Let go of distractions", "Focus on your breath", "Live with intention",
   "Appreciate the present",
